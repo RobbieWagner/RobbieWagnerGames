@@ -5,32 +5,35 @@ using UnityEngine.UI;
 using TMPro;
 using Ink.Runtime;
 
-public class DialogueChoice : MonoBehaviour
+namespace RobbieWagnerGames.UI
 {
-    [SerializeField] private Color inactiveColor;
-    [SerializeField] private Color activeColor;
-
-    public TextMeshProUGUI choiceText;
-    public Choice choice;
-
-    private void Awake()
+    public class DialogueChoice : MonoBehaviour
     {
-        choiceText.color = inactiveColor;
-    }
+        [SerializeField] private Color inactiveColor;
+        [SerializeField] private Color activeColor;
 
-    public void SetActive()
-    {
-        choiceText.color = activeColor;
-    }
+        public TextMeshProUGUI choiceText;
+        public Choice choice;
 
-    public void SetInactive()
-    {
-        choiceText.color = inactiveColor;
-    }
+        private void Awake()
+        {
+            choiceText.color = inactiveColor;
+        }
 
-    public void Initialize(Choice newChoice)
-    {
-        choiceText.text = newChoice.text;
-        SetInactive();
+        public void SetActive()
+        {
+            choiceText.color = activeColor;
+        }
+
+        public void SetInactive()
+        {
+            choiceText.color = inactiveColor;
+        }
+
+        public void Initialize(Choice newChoice)
+        {
+            choiceText.text = newChoice.text;
+            SetInactive();
+        }
     }
 }

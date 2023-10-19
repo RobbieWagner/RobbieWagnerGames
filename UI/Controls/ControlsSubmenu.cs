@@ -7,34 +7,37 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
-public class ControlsSubmenu : MenuTab
+namespace RobbieWagnerGames.UI
 {
-    //[SerializeField] private TextMeshProUGUI sectionName;
-    [SerializeField] public VerticalLayoutGroup actions;
-    [SerializeField] public VerticalLayoutGroup keyBinds;
-
-    [SerializeField] private PlayerInput playerInput;
-
-    [SerializeField] private ControlsLibrary controlsLibrary;
-
-    [SerializeField] private TextMeshProUGUI keyBindTextPrefab;
-
-    public override void BuildTab()
+    public class ControlsSubmenu : MenuTab
     {
-        base.BuildTab();
+        //[SerializeField] private TextMeshProUGUI sectionName;
+        [SerializeField] public VerticalLayoutGroup actions;
+        [SerializeField] public VerticalLayoutGroup keyBinds;
 
-        //sectionName.text = tabName;
+        [SerializeField] private PlayerInput playerInput;
 
-        Dictionary<InputType, ActionMapIconData> dict = controlsLibrary.dict;
+        [SerializeField] private ControlsLibrary controlsLibrary;
 
-        foreach(KeyValuePair<InputType, ActionMapIconData> keyValuePair in dict)
+        [SerializeField] private TextMeshProUGUI keyBindTextPrefab;
+
+        public override void BuildTab()
         {
-            TextMeshProUGUI actionText = Instantiate(contentTextPrefab.gameObject, actions.transform).GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI keyBind = Instantiate(keyBindTextPrefab.gameObject, keyBinds.transform).GetComponent<TextMeshProUGUI>();
+            base.BuildTab();
 
-            actionText.text = AddSpacesToString(keyValuePair.Key.ToString(), false);
-            keyBind.text = keyValuePair.Value.mkbInputString;
+            //sectionName.text = tabName;
+
+            Dictionary<InputType, ActionMapIconData> dict = controlsLibrary.dict;
+
+            foreach(KeyValuePair<InputType, ActionMapIconData> keyValuePair in dict)
+            {
+                TextMeshProUGUI actionText = Instantiate(contentTextPrefab.gameObject, actions.transform).GetComponent<TextMeshProUGUI>();
+                TextMeshProUGUI keyBind = Instantiate(keyBindTextPrefab.gameObject, keyBinds.transform).GetComponent<TextMeshProUGUI>();
+
+                actionText.text = AddSpacesToString(keyValuePair.Key.ToString(), false);
+                keyBind.text = keyValuePair.Value.mkbInputString;
+            }
         }
-    }
 
+    }
 }

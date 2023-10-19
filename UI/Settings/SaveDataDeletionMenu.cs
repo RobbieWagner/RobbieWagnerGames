@@ -4,24 +4,27 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class SaveDataDeletionMenu : MenuTab
+namespace RobbieWagnerGames.UI
 {
-    [Header("Save Data Deletion")]
-    [SerializeField] private TextMeshProUGUI deleteDataText;
-    [SerializeField] private Button deleteSaveDataButtonPrefab;
-    private Button deleteSaveDataButton;
-
-    public override void BuildTab()
+    public class SaveDataDeletionMenu : MenuTab
     {
-        base.BuildTab();
-        Instantiate(deleteDataText, tabContentParent.transform);
-        deleteSaveDataButton = Instantiate(deleteSaveDataButtonPrefab, tabContentParent.transform).GetComponent<Button>();
+        [Header("Save Data Deletion")]
+        [SerializeField] private TextMeshProUGUI deleteDataText;
+        [SerializeField] private Button deleteSaveDataButtonPrefab;
+        private Button deleteSaveDataButton;
 
-        deleteSaveDataButton.onClick.AddListener(DeleteSaveData);
-    }
+        public override void BuildTab()
+        {
+            base.BuildTab();
+            Instantiate(deleteDataText, tabContentParent.transform);
+            deleteSaveDataButton = Instantiate(deleteSaveDataButtonPrefab, tabContentParent.transform).GetComponent<Button>();
 
-    private void DeleteSaveData()
-    {
-        PlayerPrefs.DeleteAll();
+            deleteSaveDataButton.onClick.AddListener(DeleteSaveData);
+        }
+
+        private void DeleteSaveData()
+        {
+            PlayerPrefs.DeleteAll();
+        }
     }
 }

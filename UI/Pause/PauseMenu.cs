@@ -6,164 +6,167 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class PauseMenu : Menu
+namespace RobbieWagnerGames.UI
 {
-
-    [SerializeField] private PlayerInput playerInput;
-    [SerializeField] List<string> actionMapsToDisable;
-
-    [SerializeField] private Button resumeButton;
-    [SerializeField] private Button settingsButton;
-    [SerializeField] private Button controlsButton;
-    [SerializeField] private Button saveButton;
-    [SerializeField] private Button quitButton;
-
-    [SerializeField] private Canvas settings;
-    [SerializeField] private Canvas controls;
-
-    [HideInInspector] public bool canPause;
-    [HideInInspector] public bool paused;
-
-    public static PauseMenu Instance {get; private set;}
-
-    private void Awake()
+    public class PauseMenu : Menu
     {
-        if (Instance != null && Instance != this) 
-        { 
-            Destroy(gameObject); 
-        } 
-        else 
-        { 
-            Instance = this; 
-        } 
 
-        canPause = true;
-        paused = false;
-    } 
+        [SerializeField] private PlayerInput playerInput;
+        [SerializeField] List<string> actionMapsToDisable;
 
-    protected override void OnEnable()
-    {
-            base.OnEnable();
+        [SerializeField] private Button resumeButton;
+        [SerializeField] private Button settingsButton;
+        [SerializeField] private Button controlsButton;
+        [SerializeField] private Button saveButton;
+        [SerializeField] private Button quitButton;
 
-            paused = true;
-            Time.timeScale = 0;
+        [SerializeField] private Canvas settings;
+        [SerializeField] private Canvas controls;
 
-            foreach(string actionMapName in actionMapsToDisable)
-            {
-                if(!string.IsNullOrEmpty(actionMapName))
-                {
-                    playerInput.actions.FindActionMap(actionMapName).Disable();
-                } 
-            }
+        [HideInInspector] public bool canPause;
+        [HideInInspector] public bool paused;
 
-            resumeButton.onClick.AddListener(ResumeGame);
-            settingsButton.onClick.AddListener(OpenSettings);
-            controlsButton.onClick.AddListener(OpenControls);
-            saveButton.onClick.AddListener(SaveGame);
-            quitButton.onClick.AddListener(QuitToMainMenu);
+        public static PauseMenu Instance {get; private set;}
 
-            thisCanvas.enabled = true;
-
-            if(PlayerMovement.Instance != null) 
-            {
-                PlayerMovement.Instance.canMove = false;
-                PlayerMovement.Instance.StopPlayer();
-            }
-    }
-
-    protected override void OnDisable()
-    {
-        base.OnDisable();
-
-        if(!paused) 
+        private void Awake()
         {
-            Time.timeScale = 1;
-            foreach(string actionMapName in actionMapsToDisable)
-            {
-                if(!string.IsNullOrEmpty(actionMapName))
-                {
-                    playerInput.actions.FindActionMap(actionMapName).Enable();
-                } 
-            }
+            if (Instance != null && Instance != this) 
+            { 
+                Destroy(gameObject); 
+            } 
+            else 
+            { 
+                Instance = this; 
+            } 
 
-            if(PlayerMovement.Instance != null) 
-            {
-                PlayerMovement.Instance.canMove = true;
-                PlayerMovement.Instance.StopPlayer();
-            }
+            canPause = true;
+            paused = false;
+        } 
+
+        protected override void OnEnable()
+        {
+                base.OnEnable();
+
+                paused = true;
+                Time.timeScale = 0;
+
+                foreach(string actionMapName in actionMapsToDisable)
+                {
+                    if(!string.IsNullOrEmpty(actionMapName))
+                    {
+                        playerInput.actions.FindActionMap(actionMapName).Disable();
+                    } 
+                }
+
+                resumeButton.onClick.AddListener(ResumeGame);
+                settingsButton.onClick.AddListener(OpenSettings);
+                controlsButton.onClick.AddListener(OpenControls);
+                saveButton.onClick.AddListener(SaveGame);
+                quitButton.onClick.AddListener(QuitToMainMenu);
+
+                thisCanvas.enabled = true;
+
+                if(PlayerMovement.Instance != null) 
+                {
+                    PlayerMovement.Instance.canMove = false;
+                    PlayerMovement.Instance.StopPlayer();
+                }
         }
 
-        resumeButton.onClick.RemoveListener(ResumeGame);
-        settingsButton.onClick.RemoveListener(OpenSettings);
-        controlsButton.onClick.RemoveListener(OpenControls);
-        saveButton.onClick.RemoveListener(SaveGame);
-        quitButton.onClick.RemoveListener(QuitToMainMenu);
+        protected override void OnDisable()
+        {
+            base.OnDisable();
 
-        thisCanvas.enabled = false;
-    }
+            if(!paused) 
+            {
+                Time.timeScale = 1;
+                foreach(string actionMapName in actionMapsToDisable)
+                {
+                    if(!string.IsNullOrEmpty(actionMapName))
+                    {
+                        playerInput.actions.FindActionMap(actionMapName).Enable();
+                    } 
+                }
 
-    public void ResumeGame()
-    {
-        paused = false;
-        this.enabled = false;
-    }
+                if(PlayerMovement.Instance != null) 
+                {
+                    PlayerMovement.Instance.canMove = true;
+                    PlayerMovement.Instance.StopPlayer();
+                }
+            }
 
-    private void OpenSettings()
-    {
-        StartCoroutine(SwapCanvases(thisCanvas, settings));
-    }
+            resumeButton.onClick.RemoveListener(ResumeGame);
+            settingsButton.onClick.RemoveListener(OpenSettings);
+            controlsButton.onClick.RemoveListener(OpenControls);
+            saveButton.onClick.RemoveListener(SaveGame);
+            quitButton.onClick.RemoveListener(QuitToMainMenu);
 
-    private void OpenControls()
-    {
-        StartCoroutine(SwapCanvases(thisCanvas, controls));
-    }
+            thisCanvas.enabled = false;
+        }
 
-    private void SaveGame()
-    {
-        StartCoroutine(GameManager.Instance.SaveGame());
+        public void ResumeGame()
+        {
+            paused = false;
+            this.enabled = false;
+        }
 
-        ToggleButtonInteractibility(false);
-        GameManager.Instance.OnSaveGame += OnSaveButtonComplete;
-    }
+        private void OpenSettings()
+        {
+            StartCoroutine(SwapCanvases(thisCanvas, settings));
+        }
 
-    private void OnSaveButtonComplete()
-    {
-        ToggleButtonInteractibility(true);
-        GameManager.Instance.OnSaveGame -= OnSaveButtonComplete;
-    }
+        private void OpenControls()
+        {
+            StartCoroutine(SwapCanvases(thisCanvas, controls));
+        }
 
-    private void QuitToMainMenu()
-    {
-        ToggleButtonInteractibility(false);
+        private void SaveGame()
+        {
+            StartCoroutine(GameManager.Instance.SaveGame());
 
-        StartCoroutine(QuitToMainMenuCo());
-    }
+            ToggleButtonInteractibility(false);
+            GameManager.Instance.OnSaveGame += OnSaveButtonComplete;
+        }
 
-    protected override void ToggleButtonInteractibility(bool toggleOn)
-    {
-        base.ToggleButtonInteractibility(toggleOn);
+        private void OnSaveButtonComplete()
+        {
+            ToggleButtonInteractibility(true);
+            GameManager.Instance.OnSaveGame -= OnSaveButtonComplete;
+        }
 
-        resumeButton.interactable = toggleOn;
-        settingsButton.interactable = toggleOn;
-        controlsButton.interactable = toggleOn;
-        saveButton.interactable = toggleOn;
-        quitButton.interactable = toggleOn;
-    }
+        private void QuitToMainMenu()
+        {
+            ToggleButtonInteractibility(false);
 
-    private IEnumerator QuitToMainMenuCo()
-    {
-        yield return new WaitForSecondsRealtime(.1f);
-        Time.timeScale = 1;
-        GameManager.Instance.UpdateGameState(GameState.None);
-        SceneManager.LoadScene("MainMenu");
+            StartCoroutine(QuitToMainMenuCo());
+        }
 
-        StopCoroutine(QuitToMainMenuCo());
-    }
+        protected override void ToggleButtonInteractibility(bool toggleOn)
+        {
+            base.ToggleButtonInteractibility(toggleOn);
 
-    protected override IEnumerator SwapCanvases(Canvas active, Canvas next)
-    {
-        yield return StartCoroutine(base.SwapCanvases(active, next));
+            resumeButton.interactable = toggleOn;
+            settingsButton.interactable = toggleOn;
+            controlsButton.interactable = toggleOn;
+            saveButton.interactable = toggleOn;
+            quitButton.interactable = toggleOn;
+        }
 
-        StopCoroutine(SwapCanvases(active, next));
+        private IEnumerator QuitToMainMenuCo()
+        {
+            yield return new WaitForSecondsRealtime(.1f);
+            Time.timeScale = 1;
+            GameManager.Instance.UpdateGameState(GameState.None);
+            SceneManager.LoadScene("MainMenu");
+
+            StopCoroutine(QuitToMainMenuCo());
+        }
+
+        protected override IEnumerator SwapCanvases(Canvas active, Canvas next)
+        {
+            yield return StartCoroutine(base.SwapCanvases(active, next));
+
+            StopCoroutine(SwapCanvases(active, next));
+        }
     }
 }

@@ -6,97 +6,100 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class MainMenuManager : Menu
+namespace RobbieWagnerGames.UI
 {
-    [SerializeField] private Button startButton;
-    [SerializeField] private Button settingsButton;
-    [SerializeField] private Button controlsButton;
-    [SerializeField] private Button creditsButton;
-    [SerializeField] private Button quitButton;
-
-    [SerializeField] private string sceneToGoTo;
-
-    [SerializeField] private Canvas settings;
-    [SerializeField] private Canvas controls;
-    [SerializeField] private Canvas credits;
-
-    protected override void Awake()
+    public class MainMenuManager : Menu
     {
-        base.Awake();
+        [SerializeField] private Button startButton;
+        [SerializeField] private Button settingsButton;
+        [SerializeField] private Button controlsButton;
+        [SerializeField] private Button creditsButton;
+        [SerializeField] private Button quitButton;
 
-        if(DontDestroyOnLoadManager.Instance != null)
+        [SerializeField] private string sceneToGoTo;
+
+        [SerializeField] private Canvas settings;
+        [SerializeField] private Canvas controls;
+        [SerializeField] private Canvas credits;
+
+        protected override void Awake()
         {
-            DontDestroyOnLoadManager.Instance.DestroyList();
+            base.Awake();
+
+            if(DontDestroyOnLoadManager.Instance != null)
+            {
+                DontDestroyOnLoadManager.Instance.DestroyList();
+            }
         }
-    }
 
-    protected override void OnEnable()
-    {
-        startButton.onClick.AddListener(StartGame);
-        settingsButton.onClick.AddListener(OpenSettings);
-        controlsButton.onClick.AddListener(OpenControls);
-        creditsButton.onClick.AddListener(OpenCredits);
-        quitButton.onClick.AddListener(QuitGame);
+        protected override void OnEnable()
+        {
+            startButton.onClick.AddListener(StartGame);
+            settingsButton.onClick.AddListener(OpenSettings);
+            controlsButton.onClick.AddListener(OpenControls);
+            creditsButton.onClick.AddListener(OpenCredits);
+            quitButton.onClick.AddListener(QuitGame);
 
-        base.OnEnable();
-    }
+            base.OnEnable();
+        }
 
-    protected override void OnDisable()
-    {
-        base.OnDisable();
+        protected override void OnDisable()
+        {
+            base.OnDisable();
 
-        startButton.onClick.RemoveListener(StartGame);
-        settingsButton.onClick.RemoveListener(OpenSettings);
-        controlsButton.onClick.RemoveListener(OpenControls);
-        creditsButton.onClick.RemoveListener(OpenCredits);
-        quitButton.onClick.RemoveListener(QuitGame);
-    }
+            startButton.onClick.RemoveListener(StartGame);
+            settingsButton.onClick.RemoveListener(OpenSettings);
+            controlsButton.onClick.RemoveListener(OpenControls);
+            creditsButton.onClick.RemoveListener(OpenCredits);
+            quitButton.onClick.RemoveListener(QuitGame);
+        }
 
-    public void StartGame()
-    {
-        ToggleButtonInteractibility(false);
+        public void StartGame()
+        {
+            ToggleButtonInteractibility(false);
 
-        StartCoroutine(GameManager.Instance.LoadGame());
-    }
+            StartCoroutine(GameManager.Instance.LoadGame());
+        }
 
-    private void OpenSettings()
-    {
-        StartCoroutine(SwapCanvases(thisCanvas, settings));
-    }
+        private void OpenSettings()
+        {
+            StartCoroutine(SwapCanvases(thisCanvas, settings));
+        }
 
-    private void OpenControls()
-    {
-        StartCoroutine(SwapCanvases(thisCanvas, controls));
-    }
+        private void OpenControls()
+        {
+            StartCoroutine(SwapCanvases(thisCanvas, controls));
+        }
 
-    private void OpenCredits()
-    {
-        StartCoroutine(SwapCanvases(thisCanvas, credits));
-    }
+        private void OpenCredits()
+        {
+            StartCoroutine(SwapCanvases(thisCanvas, credits));
+        }
 
-    private void QuitGame()
-    {
-        ToggleButtonInteractibility(false);
+        private void QuitGame()
+        {
+            ToggleButtonInteractibility(false);
 
-        //save any new save data
-        Application.Quit();
-    }
+            //save any new save data
+            Application.Quit();
+        }
 
-    protected override void ToggleButtonInteractibility(bool toggleOn)
-    {
-        base.ToggleButtonInteractibility(toggleOn);
+        protected override void ToggleButtonInteractibility(bool toggleOn)
+        {
+            base.ToggleButtonInteractibility(toggleOn);
 
-        startButton.interactable = toggleOn;
-        settingsButton.interactable = toggleOn;
-        controlsButton.interactable = toggleOn;
-        creditsButton.interactable = toggleOn;
-        quitButton.interactable = toggleOn;
-    }
+            startButton.interactable = toggleOn;
+            settingsButton.interactable = toggleOn;
+            controlsButton.interactable = toggleOn;
+            creditsButton.interactable = toggleOn;
+            quitButton.interactable = toggleOn;
+        }
 
-    protected override IEnumerator SwapCanvases(Canvas active, Canvas next)
-    {
-        yield return StartCoroutine(base.SwapCanvases(active, next));
+        protected override IEnumerator SwapCanvases(Canvas active, Canvas next)
+        {
+            yield return StartCoroutine(base.SwapCanvases(active, next));
 
-        StopCoroutine(SwapCanvases(active, next));
+            StopCoroutine(SwapCanvases(active, next));
+        }
     }
 }

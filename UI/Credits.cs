@@ -5,7 +5,10 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class Credits : Menu
+namespace RobbieWagnerGames.UI
 {
+    public class Credits : Menu
+    {
 
+    }
 }

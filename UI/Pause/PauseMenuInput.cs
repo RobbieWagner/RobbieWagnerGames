@@ -2,21 +2,24 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PauseMenuInput : MonoBehaviour
+RobbieWagnerGames.UI
 {
-    [SerializeField] private PauseMenu pauseMenu;
-
-    private void OnPause()
+    public class PauseMenuInput : MonoBehaviour
     {
-        if(pauseMenu != null)
+        [SerializeField] private PauseMenu pauseMenu;
+
+        private void OnPause()
         {
-            if(pauseMenu.enabled && pauseMenu.paused)
+            if(pauseMenu != null)
             {
-                pauseMenu.ResumeGame();
-            }
-            else if(pauseMenu.canPause && !pauseMenu.paused)
-            {
-                pauseMenu.enabled = true;
+                if(pauseMenu.enabled && pauseMenu.paused)
+                {
+                    pauseMenu.ResumeGame();
+                }
+                else if(pauseMenu.canPause && !pauseMenu.paused)
+                {
+                    pauseMenu.enabled = true;
+                }
             }
         }
     }

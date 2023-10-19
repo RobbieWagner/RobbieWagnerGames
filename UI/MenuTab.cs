@@ -6,49 +6,52 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class MenuTab : MonoBehaviour
+namespace RobbieWagnerGames.UI
 {
-    [Header("General")]
-    [SerializeField] public string tabName;
-    [SerializeField] public LayoutGroup tabContentParent;
-
-    [SerializeField] public TextMeshProUGUI contentTextPrefab;
-
-    public virtual void BuildTab()
+    public class MenuTab : MonoBehaviour
     {
+        [Header("General")]
+        [SerializeField] public string tabName;
+        [SerializeField] public LayoutGroup tabContentParent;
 
-    }
+        [SerializeField] public TextMeshProUGUI contentTextPrefab;
 
-    public virtual void ToggleTab(bool on)
-    {
-        foreach(Transform child in transform)
+        public virtual void BuildTab()
         {
-            transform.gameObject.SetActive(on);
-        }
-    }
 
-    protected string AddSpacesToString(string text, bool preserveAcronyms)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return string.Empty;
         }
 
-        StringBuilder newText = new StringBuilder(text.Length * 2);
-        newText.Append(text[0]);
-        for (int i = 1; i < text.Length; i++)
+        public virtual void ToggleTab(bool on)
         {
-            if (char.IsUpper(text[i]))
+            foreach(Transform child in transform)
             {
-                if ((text[i - 1] != ' ' && !char.IsUpper(text[i - 1])) ||
-                    (preserveAcronyms && char.IsUpper(text[i - 1]) && 
-                     i < text.Length - 1 && !char.IsUpper(text[i + 1])))
-                     {
-                        newText.Append(' ');
-                     }
+                transform.gameObject.SetActive(on);
             }
-            newText.Append(text[i]);
         }
-        return newText.ToString();
+
+        protected string AddSpacesToString(string text, bool preserveAcronyms)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            StringBuilder newText = new StringBuilder(text.Length * 2);
+            newText.Append(text[0]);
+            for (int i = 1; i < text.Length; i++)
+            {
+                if (char.IsUpper(text[i]))
+                {
+                    if ((text[i - 1] != ' ' && !char.IsUpper(text[i - 1])) ||
+                        (preserveAcronyms && char.IsUpper(text[i - 1]) && 
+                        i < text.Length - 1 && !char.IsUpper(text[i + 1])))
+                        {
+                            newText.Append(' ');
+                        }
+                }
+                newText.Append(text[i]);
+            }
+            return newText.ToString();
+        }
     }
 }

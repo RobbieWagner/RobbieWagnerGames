@@ -5,61 +5,64 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class Menu : MonoBehaviour
+namespace RobbieWagnerGames.UI
 {
-
-    [SerializeField] public Canvas thisCanvas;
-
-    [SerializeField] protected Button backButton;
-    [HideInInspector] public Canvas lastCanvas;
-
-    protected virtual void Awake()
+    public class Menu : MonoBehaviour
     {
-        
-    }
-    
-    protected virtual void OnEnable()
-    {
-        ToggleButtonInteractibility(true);
 
-        if(backButton != null) backButton.onClick.AddListener(BackToLastMenu);
-    }
+        [SerializeField] public Canvas thisCanvas;
 
-    protected virtual void OnDisable()
-    {
-       ToggleButtonInteractibility(false);  
+        [SerializeField] protected Button backButton;
+        [HideInInspector] public Canvas lastCanvas;
 
-       if(backButton != null) backButton.onClick.RemoveListener(BackToLastMenu);
-    }
-
-    protected virtual void ToggleButtonInteractibility(bool toggleOn)
-    {
-        if(backButton != null) backButton.interactable = toggleOn;
-    }
-
-    protected virtual void BackToLastMenu()
-    {
-        if(lastCanvas != null)
+        protected virtual void Awake()
         {
-            StartCoroutine(SwapCanvases(thisCanvas, lastCanvas));
+            
         }
-    }
+        
+        protected virtual void OnEnable()
+        {
+            ToggleButtonInteractibility(true);
 
-    protected virtual IEnumerator SwapCanvases(Canvas active, Canvas next)
-    {
-        yield return new WaitForSecondsRealtime(.1f);
+            if(backButton != null) backButton.onClick.AddListener(BackToLastMenu);
+        }
 
-        Menu activeMenu = active.gameObject.GetComponent<Menu>();
-        Menu nextMenu = next.gameObject.GetComponent<Menu>();
+        protected virtual void OnDisable()
+        {
+        ToggleButtonInteractibility(false);  
 
-        active.enabled = false;
-        next.enabled = true;
+        if(backButton != null) backButton.onClick.RemoveListener(BackToLastMenu);
+        }
 
-        nextMenu.enabled = true;
-        nextMenu.ToggleButtonInteractibility(true);
-        nextMenu.lastCanvas = activeMenu.thisCanvas;
-        activeMenu.enabled = false;
-    
-        StopCoroutine(SwapCanvases(active, next));
+        protected virtual void ToggleButtonInteractibility(bool toggleOn)
+        {
+            if(backButton != null) backButton.interactable = toggleOn;
+        }
+
+        protected virtual void BackToLastMenu()
+        {
+            if(lastCanvas != null)
+            {
+                StartCoroutine(SwapCanvases(thisCanvas, lastCanvas));
+            }
+        }
+
+        protected virtual IEnumerator SwapCanvases(Canvas active, Canvas next)
+        {
+            yield return new WaitForSecondsRealtime(.1f);
+
+            Menu activeMenu = active.gameObject.GetComponent<Menu>();
+            Menu nextMenu = next.gameObject.GetComponent<Menu>();
+
+            active.enabled = false;
+            next.enabled = true;
+
+            nextMenu.enabled = true;
+            nextMenu.ToggleButtonInteractibility(true);
+            nextMenu.lastCanvas = activeMenu.thisCanvas;
+            activeMenu.enabled = false;
+        
+            StopCoroutine(SwapCanvases(active, next));
+        }
     }
 }

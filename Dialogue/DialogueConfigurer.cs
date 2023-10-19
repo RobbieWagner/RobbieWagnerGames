@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using Ink.Runtime;
 
-public static class DialogueConfigurer
+namespace RobbieWagnerGames
 {
-   public static Story ConfigureStory(TextAsset text)
+   public static class DialogueConfigurer
    {
-      Story newStory = new Story(text.text);
-      return newStory;
+      public static Story ConfigureStory(TextAsset text)
+      {
+         Story newStory = new Story(text.text);
+         return newStory;
+      }
    }
 }
