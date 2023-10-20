@@ -10,6 +10,10 @@ namespace RobbieWagnerGames
         public enum SiblingGroup
         {
             Blank,
+            Water,
+            Beach,
+            Grass,
+            Forest
         }
 
         public SiblingGroup siblingGroup;

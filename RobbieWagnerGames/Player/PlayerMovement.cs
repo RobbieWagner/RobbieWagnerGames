@@ -97,15 +97,6 @@ namespace RobbieWagnerGames
 
             if(characterController.enabled) body.Move(movementVector * currentWalkSpeed * Time.deltaTime);
 
-            if(lastFramePos != null && lastFramePos.y != transform.position.y)
-            {
-                // ExplorationCameraMovement.Instance.StartRotation();
-
-                // if(lastFramePos.y > transform.position.y && ExplorationCameraMovement.Instance.CanBeLowered())
-                // {
-                //     ExplorationCameraMovement.Instance.MoveGlobalY(transform.position.y + ExplorationCameraMovement.Instance.DEFAULT_CAMERA_POSITION.y);
-                // }
-            }
             lastFramePos = transform.position;
 
             if(movingForcibly)
