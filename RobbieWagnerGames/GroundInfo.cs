@@ -4,6 +4,7 @@ using UnityEngine;
 
 public enum GroundType
 {
+    None = -1,
     Default = 0,
     Rock = 1,
     Grass = 2,

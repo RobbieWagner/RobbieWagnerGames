@@ -22,7 +22,7 @@ namespace RobbieWagnerGames
         private PlayerInputActions playerControls;
 
         private string currentSentenceText = "";
-        private bool sentenceTyping = false;
+        //private bool sentenceTyping = false;
         private bool skipSentenceTyping = false;
 
         [SerializeField] HorizontalLayoutGroup textbox;
@@ -65,12 +65,17 @@ namespace RobbieWagnerGames
             get { return canContinue; }
             set
             {
-                if(value == canContinue) return;
+                if(value == canContinue) 
+                    return;
                 canContinue = value;
 
-                if(canContinue) DisplayDialogueChoices();
+                if(canContinue) 
+                    OnContinueDialogue?.Invoke();
+                    //DisplayDialogueChoices();
             }
         }
+        public delegate void ContinueDelegate();
+        public event ContinueDelegate OnContinueDialogue;
 
         public static DialogueManager Instance {get; private set;}
 
@@ -95,6 +100,12 @@ namespace RobbieWagnerGames
             StartCoroutine(EnterDialogueModeCo(story));
         }
 
+        public IEnumerator EnterDialogueModeCo(TextAsset textAsset)
+        {
+            Story story = new Story(textAsset.text);
+            yield return StartCoroutine(EnterDialogueModeCo(story));
+        }
+
         public IEnumerator EnterDialogueModeCo(Story story)
         {
             if(dialogueCoroutine == null)
@@ -102,13 +113,15 @@ namespace RobbieWagnerGames
                 dialogueCoroutine = RunDialogue(story);
                 yield return StartCoroutine(dialogueCoroutine);
             }
-
-            StopCoroutine(EnterDialogueModeCo(story));
         }
 
         #region core mechanics
+
         public IEnumerator RunDialogue(Story story)
         {
+            if (story == null)
+                throw new NullReferenceException();
+
             yield return null;
 
             currentStory = story;
@@ -127,25 +140,6 @@ namespace RobbieWagnerGames
             StopCoroutine(RunDialogue(story));
         }
 
-        private void OnNextDialogueLine(InputValue value)
-        {
-            if(CanContinue)
-            {
-                if(DialogueHasChoices())
-                {
-                    currentStory.ChooseChoiceIndex(CurrentChoice);
-                }
-
-                continueIcon.enabled = false;
-
-                StartCoroutine(ReadNextSentence());
-            }
-            else if(sentenceTyping)
-            {
-                skipSentenceTyping = true;
-            }
-        }
-
         public IEnumerator ReadNextSentence()
         {
             CanContinue = false;
@@ -156,7 +150,7 @@ namespace RobbieWagnerGames
             if(currentStory.canContinue)
             {
                 currentText.text = "";
-                sentenceTyping = true;
+                //sentenceTyping = true;
 
                 currentSentenceText = ConfigureSentence(currentStory.Continue());
 
@@ -182,7 +176,7 @@ namespace RobbieWagnerGames
 
                 //Debug.Log(text);
                 currentText.text = currentSentenceText;
-                sentenceTyping = false;
+                //sentenceTyping = false;
                 skipSentenceTyping = false;
                 CanContinue = true;
             }
@@ -202,8 +196,11 @@ namespace RobbieWagnerGames
             dialogueCanvas.enabled = false;
             dialogueCoroutine = null;
             currentStory = null;
+            OnEndDialogue?.Invoke();
             StopCoroutine(EndDialogue());
         }
+        public delegate void EndDialogueDelegate();
+        public event EndDialogueDelegate OnEndDialogue;
         #endregion
 
         #region Text and Text Field Configuration
@@ -276,19 +273,22 @@ namespace RobbieWagnerGames
             {
                 SetSpeaker(speaker, placeSpeakerOnLeft);
             }
-            if(removeSpeakerOnLeft) 
+            if(leftSpeaker != null && rightSpeaker != null)
             {
-                ToggleLeftSpeaker(false);
-                if(rightSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleRight;
-                else textbox.childAlignment = TextAnchor.MiddleCenter;
+                if (removeSpeakerOnLeft)
+                {
+                    ToggleLeftSpeaker(false);
+                    if (rightSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleRight;
+                    else textbox.childAlignment = TextAnchor.MiddleCenter;
+                }
+                if (removeSpeakerOnRight)
+                {
+                    ToggleRightSpeaker(false);
+                    if (leftSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleLeft;
+                    else textbox.childAlignment = TextAnchor.MiddleCenter;
+                }
+                //use values to determine sentence outcome
             }
-            if(removeSpeakerOnRight) 
-            {
-                ToggleRightSpeaker(false);
-                if(leftSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleLeft;
-                else textbox.childAlignment = TextAnchor.MiddleCenter;
-            }
-            //use values to determine sentence outcome
         }
 
         private void SetSpeaker(string speaker, bool placeSpeakerOnLeft)
@@ -311,18 +311,24 @@ namespace RobbieWagnerGames
 
         private void ToggleLeftSpeaker(bool on)
         {
-            leftSpeaker.gameObject.SetActive(on);
-            leftSpeakerSprite.enabled = on;
-            leftSpeakerNamePlate.gameObject.SetActive(on);
-            leftSpeakerName.gameObject.SetActive(on);
+            if(leftSpeaker != null)
+            {
+                leftSpeaker.gameObject.SetActive(on);
+                leftSpeakerSprite.enabled = on;
+                leftSpeakerNamePlate.gameObject.SetActive(on);
+                leftSpeakerName.gameObject.SetActive(on);
+            }
         }
 
         private void ToggleRightSpeaker(bool on)
         {
-            rightSpeaker.gameObject.SetActive(on);
-            rightSpeakerSprite.enabled = on;
-            rightSpeakerNamePlate.gameObject.SetActive(on);
-            rightSpeakerName.gameObject.SetActive(on);
+            if(rightSpeaker != null)
+            {
+                rightSpeaker.gameObject.SetActive(on);
+                rightSpeakerSprite.enabled = on;
+                rightSpeakerNamePlate.gameObject.SetActive(on);
+                rightSpeakerName.gameObject.SetActive(on);
+            }
         }
         #endregion
 
@@ -351,10 +357,10 @@ namespace RobbieWagnerGames
 
                 CurrentChoice = 0;
             }
-            else
-            {
-                continueIcon.enabled = true;
-            }
+            //else
+            //{
+            //    continueIcon.enabled = true;
+            //}
         }
 
         private void OnNavigateDialogueMenu(InputValue inputValue)

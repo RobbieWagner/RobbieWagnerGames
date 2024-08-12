@@ -10,7 +10,7 @@ namespace RobbieWagnerGames.UI
     {
 
         [Header("Graphics")]
-        private int fullscreen;
+        //private int fullscreen;
         [SerializeField] private Toggle fullscreenTogglePrefab;
         private Toggle fullscreenToggle;
         [SerializeField] private TextMeshProUGUI toggleTextPrefab;
@@ -32,8 +32,8 @@ namespace RobbieWagnerGames.UI
         public void SetFullscreen(bool isFullscreen)
         {
             Screen.fullScreen = isFullscreen;
-            if(isFullscreen) fullscreen = 1;
-            else fullscreen = 0;
+            //if(isFullscreen) fullscreen = 1;
+            //else fullscreen = 0;
 
             if(isFullscreen)
             {

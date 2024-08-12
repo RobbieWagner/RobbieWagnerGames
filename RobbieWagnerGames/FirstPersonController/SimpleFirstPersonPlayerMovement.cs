@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -10,6 +12,36 @@ namespace RobbieWagnerGames.FirstPerson
     {
         [Header("Movement")]
         private bool canMove = true;
+        public bool CanMove
+        {
+            get { return canMove; }
+            set
+            {
+                if (value == canMove) return;
+
+                canMove = value;
+                OnToggleMovement?.Invoke(canMove);
+            }
+        }
+        private GroundType currentGroundType = GroundType.None;
+        public GroundType CurrentGroundType
+        {
+            get { return currentGroundType; }
+            set
+            {
+                if (currentGroundType == value)
+                    return;
+
+                currentGroundType = value;
+                //if (AudioEventsLibrary.Instance.groundTypeSounds.ContainsKey(currentGroundType))
+                //    StartCoroutine(ChangeFootstepSounds(currentGroundType));
+                //else
+                //    StartCoroutine(ChangeFootstepSounds());
+            }
+        }
+        public delegate void ToggleDelegate(bool on);
+        public event ToggleDelegate OnToggleMovement;
+
         private bool isMoving = false;
         [SerializeField] private float initialSpeed = 5f;
         private float currentSpeed;
@@ -21,66 +53,108 @@ namespace RobbieWagnerGames.FirstPerson
 
         [Header("Grounding and Gravity")]
         private bool isGrounded = false;
-        [SerializeField] private float groundCheckDistance = 3f;
+        //[SerializeField] private float groundCheckDistance = 3f;
         private float GRAVITY = -9.8f;
-        private float TERMINAL_VELOCITY = -100f;
-        private float currentYVelocity = 0f;
+        //private float TERMINAL_VELOCITY = -100f;
+        //private float currentYVelocity = 0f;
+
+        [SerializeField] private LayerMask groundMask;
+
+        public static SimpleFirstPersonPlayerMovement Instance { get; private set; }
 
         // Start is called before the first frame update
-        void Start()
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+            }
+            else
+            {
+                Instance = this;
+            }
+
+            currentSpeed = initialSpeed;
+
+            SetupControls();
+        }
+
+        private void SetupControls()
         {
             inputActions = new PlayerMovementActions();
-            currentSpeed = initialSpeed;
+            inputActions.Movement.Move.performed += OnMove;
+            inputActions.Movement.Move.canceled += OnStop;
+            OnToggleMovement += ToggleMovement;
+            if (CanMove)
+                inputActions.Movement.Enable();
         }
 
-        void LateUpdate()
+        private void ToggleMovement(bool on)
         {
+            if (on)
+                inputActions.Movement.Enable();
+            else
+                inputActions.Movement.Disable();
+        }
+
+        private void LateUpdate()
+        {
+            UpdateGroundCheck();
+
+            Vector3 movementVector = transform.right * inputVector.x + transform.forward * inputVector.z + Vector3.up * inputVector.y;
+
+            if (characterController.enabled)
+                characterController.Move(movementVector * currentSpeed * Time.deltaTime);
+
+        }
+
+        private void UpdateGroundCheck()
+        { 
             RaycastHit hit;
-            Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
+            isGrounded = Physics.Raycast(transform.position + new Vector3(0, .01f, 0), Vector3.down, out hit, .1f, groundMask);
 
-            isGrounded = hit.collider != null ? hit.collider.gameObject.CompareTag("Ground") : false;
-
-            Vector3 movementVector = transform.right * inputVector.x + transform.forward * inputVector.z;
-
-            if(!isGrounded && currentYVelocity > TERMINAL_VELOCITY) 
+            if (hit.collider != null)
             {
-                movementVector = new Vector3(movementVector.x, currentYVelocity + GRAVITY * Time.deltaTime, movementVector.z);
-            }
-            else if(!isGrounded) 
-            {
-                movementVector = new Vector3(movementVector.x, TERMINAL_VELOCITY, movementVector.z);
-            }
-            else 
-            {
-                movementVector = new Vector3(movementVector.x, 0, movementVector.z);
+                GroundInfo groundInfo = hit.collider.gameObject.GetComponent<GroundInfo>();
+                if (groundInfo != null)
+                    CurrentGroundType = groundInfo.groundType;
+                else
+                    CurrentGroundType = GroundType.None;
             }
 
-            if(characterController.enabled) characterController.Move(movementVector * currentSpeed * Time.deltaTime);
-            currentYVelocity = movementVector.y;
+            if (!isGrounded)
+                inputVector.y += GRAVITY * Time.deltaTime;
+            else
+                inputVector.y = 0f;
         }
 
-        private void OnMove(InputValue inputValue)
+        private void OnMove(InputAction.CallbackContext context)
         {
-            if(canMove)
-            {
-                Vector2 input = inputValue.Get<Vector2>();
+            Vector2 input = context.ReadValue<Vector2>();
 
-                if(inputVector.x != input.x && input.x != 0f)
-                {
-                    isMoving = true;
-                }
-                else if(input.x == 0 && inputVector.z != input.y && input.y != 0f)
-                {
-                    isMoving = true;
-                }
-                else if(input.x == 0 && input.y == 0)
-                {
-                    isMoving = false;
-                }
-                
-                inputVector.x = input.x;
-                inputVector.z = input.y;
+            if (inputVector.x != input.x && input.x != 0f)
+            {
+                isMoving = true;
             }
+            else if (input.x == 0 && inputVector.z != input.y && input.y != 0f)
+            {
+                isMoving = true;
+            }
+            else if (input.x == 0 && input.y == 0)
+            {
+                isMoving = false;
+            }
+
+            inputVector.x = input.x;
+            inputVector.z = input.y;
+
+            //Debug.Log($"input change: {input} processed: {inputVector} ");
+        }
+
+        private void OnStop(InputAction.CallbackContext context)
+        {
+            inputVector = Vector3.zero;
+            isMoving = false;
         }
     }
 }
