@@ -8,6 +8,7 @@ using static UnityEditor.Rendering.CameraUI;
 
 namespace RobbieWagnerGames.ProcGen
 {
+    #nullable enable
     public class WaveFunctionCollapse
     {
         private static int CountUnsetCells(List<List<ProcGenCell>> grid)
@@ -109,14 +110,6 @@ namespace RobbieWagnerGames.ProcGen
                 left.options = details.leftAllowList[cellValue].Where(x => left.options.Contains(x)).ToList();
             if (right != null)
                 right.options = details.rightAllowList[cellValue].Where(x => right.options.Contains(x)).ToList();
-
-            string printString = "";
-            foreach (var list in grid)
-            {
-                foreach (var c in list)
-                    printString += c.value == -1 ? c + ", " : c.value + ",";
-                printString += "\n";
-            }
         }
         #endregion
     }
