@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -23,9 +24,8 @@ namespace RobbieWagnerGames.UI
             backButton.onClick.RemoveListener(SaveSettings);
         }
 
-        private void SaveSettings()
+        public void SaveSettings()
         {
-            
         }
     }
 }

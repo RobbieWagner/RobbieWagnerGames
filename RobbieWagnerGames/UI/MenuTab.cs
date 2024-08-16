@@ -24,9 +24,7 @@ namespace RobbieWagnerGames.UI
         public virtual void ToggleTab(bool on)
         {
             foreach(Transform child in transform)
-            {
                 transform.gameObject.SetActive(on);
-            }
         }
 
         protected string AddSpacesToString(string text, bool preserveAcronyms)
@@ -45,9 +43,7 @@ namespace RobbieWagnerGames.UI
                     if ((text[i - 1] != ' ' && !char.IsUpper(text[i - 1])) ||
                         (preserveAcronyms && char.IsUpper(text[i - 1]) && 
                         i < text.Length - 1 && !char.IsUpper(text[i + 1])))
-                        {
                             newText.Append(' ');
-                        }
                 }
                 newText.Append(text[i]);
             }

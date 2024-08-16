@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using static UnityEditor.Rendering.CameraUI;
 
 namespace RobbieWagnerGames.ProcGen
@@ -96,7 +97,8 @@ namespace RobbieWagnerGames.ProcGen
         {
             int cellValue = cell.options[rand.Next(0, cell.options.Count)];
             cell.value = cellValue;
-            
+
+            //Update adjacent tiles            
             ProcGenCell? above = cell.y < grid.Count-1 ? grid[cell.y+1][cell.x] : null;
             ProcGenCell? below = cell.y > 0 ? grid[cell.y-1][cell.x] : null;
             ProcGenCell? left = cell.x > 0 ? grid[cell.y][cell.x-1] : null;
