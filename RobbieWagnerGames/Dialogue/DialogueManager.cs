@@ -7,37 +7,27 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 using Ink.Runtime;
+using System.Text.RegularExpressions;
 
 namespace RobbieWagnerGames
 {
-    public class DialogueManager : MonoBehaviour
+    public partial class DialogueManager : MonoBehaviour
     {
-
-        [Header("General Dialogue Info")]
-        [SerializeField] private Canvas dialogueCanvas;
-        [SerializeField] private TextMeshProUGUI currentText;
+        [Header("General")]
+        [SerializeField] private bool canvasEnabledOnStart;
 
         private Story currentStory;
         public IEnumerator dialogueCoroutine {get; private set;}
-        private PlayerInputActions playerControls;
+        private DialogueControls controls;
 
         private string currentSentenceText = "";
-        //private bool sentenceTyping = false;
+        private bool sentenceTyping = false;
         private bool skipSentenceTyping = false;
+        private bool currentSpeakerIsOnLeft = true;
 
-        [SerializeField] HorizontalLayoutGroup textbox;
+        [SerializeField] private AudioSource dialogueSound;
 
-        [Header("Left Speaker")]
-        [SerializeField] private LayoutElement leftSpeaker;
-        [SerializeField] private Image leftSpeakerSprite;
-        [SerializeField] private LayoutElement leftSpeakerNamePlate;
-        [SerializeField] private TextMeshProUGUI leftSpeakerName;
-
-        [Header("Right Speaker")]
-        [SerializeField] private LayoutElement rightSpeaker;
-        [SerializeField] private Image rightSpeakerSprite;
-        [SerializeField] private LayoutElement rightSpeakerNamePlate;
-        [SerializeField] private TextMeshProUGUI rightSpeakerName;
+        private const string PLAYER_NAME_PATH = "/Player/name";
 
         [Header("Choices")]
         [SerializeField] private DialogueChoice choicePrefab;
@@ -58,24 +48,18 @@ namespace RobbieWagnerGames
             }
         }
 
-        [SerializeField] private Image continueIcon;
         private bool canContinue;
         public bool CanContinue
         {
             get { return canContinue; }
             set
             {
-                if(value == canContinue) 
-                    return;
+                if(value == canContinue) return;
                 canContinue = value;
 
-                if(canContinue) 
-                    OnContinueDialogue?.Invoke();
-                    //DisplayDialogueChoices();
+                if(canContinue) DisplayDialogueChoices();
             }
         }
-        public delegate void ContinueDelegate();
-        public event ContinueDelegate OnContinueDialogue;
 
         public static DialogueManager Instance {get; private set;}
 
@@ -88,11 +72,15 @@ namespace RobbieWagnerGames
             else 
             { 
                 Instance = this; 
-            } 
+            }
 
-            dialogueCanvas.enabled = false;
+            DisableSpeakerVisuals();
+            dialogueCanvas.enabled = canvasEnabledOnStart;
             CanContinue = false;
-            playerControls = new PlayerInputActions();
+            continueIcon.enabled = false;
+            controls = new DialogueControls();
+            controls.Dialogue.Navigate.performed += OnNavigateDialogueMenu;
+            controls.Dialogue.Select.performed += OnNextDialogueLine;
         }
 
         public void EnterDialogueMode(Story story)
@@ -100,35 +88,34 @@ namespace RobbieWagnerGames
             StartCoroutine(EnterDialogueModeCo(story));
         }
 
-        public IEnumerator EnterDialogueModeCo(TextAsset textAsset)
-        {
-            Story story = new Story(textAsset.text);
-            yield return StartCoroutine(EnterDialogueModeCo(story));
-        }
-
         public IEnumerator EnterDialogueModeCo(Story story)
         {
             if(dialogueCoroutine == null)
             {
+                ConfigureDialogueControls();
                 dialogueCoroutine = RunDialogue(story);
                 yield return StartCoroutine(dialogueCoroutine);
             }
+
+            StopCoroutine(EnterDialogueModeCo(story));
+        }
+
+        private void ConfigureDialogueControls()
+        {
+           controls.Enable();
         }
 
         #region core mechanics
-
-        public IEnumerator RunDialogue(Story story)
+        private IEnumerator RunDialogue(Story story)
         {
-            if (story == null)
-                throw new NullReferenceException();
-
             yield return null;
 
             currentStory = story;
             dialogueCanvas.enabled = true;
+            currentSpeakerIsOnLeft = true;
 
-            ToggleLeftSpeaker(false);
-            ToggleRightSpeaker(false);
+            ToggleSpeaker(leftSpeakerNamePlate, leftSpeakerName, true);
+            ToggleSpeaker(rightSpeakerNamePlate, rightSpeakerName, true);
 
             yield return StartCoroutine(ReadNextSentence());
 
@@ -140,195 +127,14 @@ namespace RobbieWagnerGames
             StopCoroutine(RunDialogue(story));
         }
 
-        public IEnumerator ReadNextSentence()
-        {
-            CanContinue = false;
-            RemoveChoiceGameObjects();
-            choices = new List<DialogueChoice>();
-
-            yield return null;
-            if(currentStory.canContinue)
-            {
-                currentText.text = "";
-                //sentenceTyping = true;
-
-                currentSentenceText = ConfigureSentence(currentStory.Continue());
-
-                ConfigureTextField();
-                char nextChar;
-                for(int i = 0; i < currentSentenceText.Length; i++)
-                {
-                    if(skipSentenceTyping) break;
-                    nextChar = currentSentenceText[i];
-                    if(nextChar == '<')
-                    {
-                        while(nextChar != '>' && i < currentSentenceText.Length)
-                        {
-                            currentText.text += nextChar;
-                            i++;
-                            nextChar = currentSentenceText[i];
-                        } 
-                    }
-
-                    currentText.text += nextChar;
-                    yield return new WaitForSeconds(.036f);
-                }
-
-                //Debug.Log(text);
-                currentText.text = currentSentenceText;
-                //sentenceTyping = false;
-                skipSentenceTyping = false;
-                CanContinue = true;
-            }
-            else
-            {
-                yield return StartCoroutine(EndDialogue());
-            }
-
-            StopCoroutine(ReadNextSentence());
-        }
-
         public IEnumerator EndDialogue()
         {
             yield return null;
-            //Debug.Log("Dialogue ended");
             currentText.text = "";
             dialogueCanvas.enabled = false;
             dialogueCoroutine = null;
             currentStory = null;
-            OnEndDialogue?.Invoke();
             StopCoroutine(EndDialogue());
-        }
-        public delegate void EndDialogueDelegate();
-        public event EndDialogueDelegate OnEndDialogue;
-        #endregion
-
-        #region Text and Text Field Configuration
-
-        private string ConfigureSentence(string input)
-        {
-            string configuredText = input;
-
-            List<char> allowList = new List<char>() {' ', '-', '\'', ',', '.'};
-            string name = SaveDataManager.LoadString("name", "Lux");
-
-            bool nameAllowed = true;
-            foreach(char c in name)
-            {
-                if(!Char.IsLetterOrDigit(c) && !allowList.Contains(c))
-                {
-                    nameAllowed = false;
-                    break;
-                }
-            }
-
-            if(!nameAllowed)
-            {
-                name = "Lux";
-                SaveDataManager.SaveString("name", "Lux");
-            } 
-
-            configuredText = configuredText.Replace("^NAME^", name);
-
-            return configuredText;
-        }
-
-        private void ConfigureTextField()
-        {
-            List<string> tags = currentStory.currentTags;
-
-            string speaker = "";
-            bool placeSpeakerOnLeft = true;
-            bool removeSpeakerOnLeft = false;
-            bool removeSpeakerOnRight = true;
-
-            foreach(string tag in tags)
-            {
-                //Debug.Log("tag");
-                if(tag.ToUpper().Contains("SPEAKER"))
-                {
-                    speaker = tag.Substring(9).ToLower();
-                    //Debug.Log(speaker);
-                }
-                else if(tag.ToUpper().Contains("PLACESPEAKERONRIGHT"))
-                {
-                    placeSpeakerOnLeft = false;
-                }
-                else if(tag.ToUpper().Contains("REMOVESPEAKERS"))
-                {
-                    removeSpeakerOnLeft = true;
-                    removeSpeakerOnRight = true;
-                }
-                else if(tag.ToUpper().Contains("REMOVESPEAKERONLEFT"))
-                {
-                    removeSpeakerOnLeft = true;
-                }
-                else if(tag.ToUpper().Contains("REMOVESPEAKERONRIGHT"))
-                {
-                    removeSpeakerOnRight = true;
-                }
-            }
-
-            if(!string.IsNullOrEmpty(speaker))
-            {
-                SetSpeaker(speaker, placeSpeakerOnLeft);
-            }
-            if(leftSpeaker != null && rightSpeaker != null)
-            {
-                if (removeSpeakerOnLeft)
-                {
-                    ToggleLeftSpeaker(false);
-                    if (rightSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleRight;
-                    else textbox.childAlignment = TextAnchor.MiddleCenter;
-                }
-                if (removeSpeakerOnRight)
-                {
-                    ToggleRightSpeaker(false);
-                    if (leftSpeakerSprite.enabled) textbox.childAlignment = TextAnchor.MiddleLeft;
-                    else textbox.childAlignment = TextAnchor.MiddleCenter;
-                }
-                //use values to determine sentence outcome
-            }
-        }
-
-        private void SetSpeaker(string speaker, bool placeSpeakerOnLeft)
-        {
-            if(placeSpeakerOnLeft)
-            {
-                ToggleLeftSpeaker(true);
-                speaker = char.ToUpper(speaker[0]) + speaker.Substring(1);
-                leftSpeakerName.text = speaker;
-                textbox.childAlignment = TextAnchor.MiddleLeft;
-            }
-            else
-            {
-                ToggleRightSpeaker(true);
-                speaker = char.ToUpper(speaker[0]) + speaker.Substring(1);
-                rightSpeakerName.text = speaker;
-                textbox.childAlignment = TextAnchor.MiddleRight;
-            }
-        }
-
-        private void ToggleLeftSpeaker(bool on)
-        {
-            if(leftSpeaker != null)
-            {
-                leftSpeaker.gameObject.SetActive(on);
-                leftSpeakerSprite.enabled = on;
-                leftSpeakerNamePlate.gameObject.SetActive(on);
-                leftSpeakerName.gameObject.SetActive(on);
-            }
-        }
-
-        private void ToggleRightSpeaker(bool on)
-        {
-            if(rightSpeaker != null)
-            {
-                rightSpeaker.gameObject.SetActive(on);
-                rightSpeakerSprite.enabled = on;
-                rightSpeakerNamePlate.gameObject.SetActive(on);
-                rightSpeakerName.gameObject.SetActive(on);
-            }
         }
         #endregion
 
@@ -357,24 +163,24 @@ namespace RobbieWagnerGames
 
                 CurrentChoice = 0;
             }
-            //else
-            //{
-            //    continueIcon.enabled = true;
-            //}
+            else
+            {
+                continueIcon.enabled = true;
+            }
         }
 
-        private void OnNavigateDialogueMenu(InputValue inputValue)
+        private void OnNavigateDialogueMenu(InputAction.CallbackContext context)
         {
             if(DialogueHasChoices())
             {
-                float value = inputValue.Get<float>();
+                float value = context.ReadValue<float>();
                 if(value > 0f) 
                 {
-                    CurrentChoice++;
+                    CurrentChoice--;
                 }
                 else if(value < 0f)
                 {
-                    CurrentChoice--;
+                    CurrentChoice++;
                 }
             }
         }

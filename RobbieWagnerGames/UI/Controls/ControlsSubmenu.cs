@@ -15,11 +15,10 @@ namespace RobbieWagnerGames.UI
         [SerializeField] public VerticalLayoutGroup actions;
         [SerializeField] public VerticalLayoutGroup keyBinds;
 
-        [SerializeField] private PlayerInput playerInput;
-
         [SerializeField] private ControlsLibrary controlsLibrary;
 
-        [SerializeField] private TextMeshProUGUI keyBindTextPrefab;
+        [SerializeField] private List<TextMeshProUGUI> actionTexts;
+        [SerializeField] private List<TextMeshProUGUI> keybindTexts;
 
         public override void BuildTab()
         {
@@ -29,13 +28,19 @@ namespace RobbieWagnerGames.UI
 
             Dictionary<InputType, ActionMapIconData> dict = controlsLibrary.dict;
 
+            int action = 0;
             foreach(KeyValuePair<InputType, ActionMapIconData> keyValuePair in dict)
             {
-                TextMeshProUGUI actionText = Instantiate(contentTextPrefab.gameObject, actions.transform).GetComponent<TextMeshProUGUI>();
-                TextMeshProUGUI keyBind = Instantiate(keyBindTextPrefab.gameObject, keyBinds.transform).GetComponent<TextMeshProUGUI>();
+                if (action >= actionTexts.Count)
+                    break;
+
+                TextMeshProUGUI actionText = actionTexts[action];
+                TextMeshProUGUI keyBind = keybindTexts[action];
 
                 actionText.text = AddSpacesToString(keyValuePair.Key.ToString(), false);
                 keyBind.text = keyValuePair.Value.mkbInputString;
+
+                action++;
             }
         }
 

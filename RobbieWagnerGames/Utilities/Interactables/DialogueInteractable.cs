@@ -31,7 +31,7 @@ namespace RobbieWagnerGames
         protected override IEnumerator Interact()
         {
             Story story = ConfigureStory();
-            yield return StartCoroutine(DialogueManager.Instance.EnterDialogueModeCo(story));
+            yield return StartCoroutine(SimpleDialogueManager.Instance.EnterDialogueModeCo(story));
 
             yield return base.Interact();
 

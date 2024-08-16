@@ -15,13 +15,12 @@ namespace RobbieWagnerGames.UI
         [SerializeField] public bool navigateMenuHorizontally = true;
 
         [SerializeField] protected LayoutGroup tabBar;
-        protected List<TextMeshProUGUI> tabBarTextObjects; 
-        [SerializeField] protected TextMeshProUGUI tabNamePrefab;
+        [SerializeField] protected List<TextMeshProUGUI> tabBarTextObjects;
+        [SerializeField] protected List<MenuTab> menus;
         [SerializeField] protected Color inactiveColor;
         [SerializeField] protected Color activeColor;
 
-        [SerializeField] protected List<MenuTab> submenuPrefabs;
-        protected List<MenuTab> instantiatedSubmenus;
+        private UIControls uiControls;
 
         private int activeTab = -1;
         public int ActiveTab
@@ -29,15 +28,15 @@ namespace RobbieWagnerGames.UI
             get { return activeTab; }
             set 
             {
-                if(value == activeTab || instantiatedSubmenus.Count == 0) return;
+                if(value == activeTab || menus.Count == 0) return;
                 DisableActiveTab();
 
                 activeTab = value;
                 if(activeTab < 0)
                 {
-                    activeTab = instantiatedSubmenus.Count - 1;
+                    activeTab = menus.Count - 1;
                 }
-                else if(activeTab >= instantiatedSubmenus.Count) 
+                else if(activeTab >= menus.Count) 
                 {
                     activeTab = 0;
                 }
@@ -49,6 +48,12 @@ namespace RobbieWagnerGames.UI
         public delegate void OnActiveTabChangedDelegate(int tab);
         public event OnActiveTabChangedDelegate OnActiveTabChanged;
 
+        protected override void Awake()
+        {
+            base.Awake();
+            uiControls = new UIControls();
+            uiControls.UI.NavigateTab.performed += NavigateTab;
+        }
 
         protected override void OnEnable()
         {
@@ -56,102 +61,51 @@ namespace RobbieWagnerGames.UI
             base.OnEnable();
             ActiveTab = 0;
             EnableTab(ActiveTab);
+            uiControls.Enable();
         }
 
         protected override void OnDisable()
         {
             base.OnDisable();
+            uiControls.Disable();
         }
 
         protected virtual void BuildMenu()
         {
-            //Remove the old menu instantiation
-            if(instantiatedSubmenus != null)
-            {
-                foreach(MenuTab tab in instantiatedSubmenus)
-                {
-                    Destroy(tab.gameObject);
-                }
-
-                instantiatedSubmenus.Clear();
-            }
-            else
-            {
-                instantiatedSubmenus = new List<MenuTab>();
-            }
-
-            if(tabBarTextObjects != null)
-            {
-                foreach(TextMeshProUGUI tabText in tabBarTextObjects)
-                {
-                    Destroy(tabText.gameObject);
-                }
-
-                tabBarTextObjects.Clear();
-            }
-            else
-            {
-                tabBarTextObjects = new List<TextMeshProUGUI>();
-            }
-
-            //Create the new tabs, and place them into the scene
-            foreach(MenuTab tab in submenuPrefabs)
-            {
-                MenuTab newTab = Instantiate(tab, this.transform).GetComponent<MenuTab>();
-                instantiatedSubmenus.Add(newTab);
-                newTab.BuildTab();
-                newTab.gameObject.SetActive(false);
-
-                TextMeshProUGUI tabNameText = Instantiate(tabNamePrefab, tabBar.transform).GetComponent<TextMeshProUGUI>();
-                tabBarTextObjects.Add(tabNameText);
-                tabNameText.color = inactiveColor;
-                tabNameText.text = newTab.tabName;
-            }
+            foreach(MenuTab tab in menus)
+                tab.BuildTab();
         }
 
-        public virtual void OnNavigateMenuHorizontally(InputValue inputValue)
+        private void NavigateTab(InputAction.CallbackContext context)
         {
-            if(navigateMenuHorizontally && this.enabled)
-            {
-                float value = inputValue.Get<float>();
-                if(value > 0) 
-                {
-                    ActiveTab++;
-                }
-                else if(value < 0) 
-                {
-                    ActiveTab--;
-                }
-            }
-        }
+            float value = context.ReadValue<float>();
 
-        public virtual void OnNavigateMenuVertically(InputValue inputValue)
-        {
-            if(!navigateMenuHorizontally && this.enabled)
+            if (value > 0)
             {
-                float value = inputValue.Get<float>();
-                if(value > 0) 
-                {
-                    ActiveTab++;
-                }
-                else if(value < 0) 
-                {
-                    ActiveTab--;
-                }
+                ActiveTab++;
+            }
+            else if (value < 0)
+            {
+                ActiveTab--;
             }
         }
 
         public virtual void EnableTab(int tab)
         {
-            instantiatedSubmenus[tab].gameObject.SetActive(true);
+            foreach(MenuTab menuTab in menus)
+                menuTab.gameObject.SetActive(false);
+            foreach(TextMeshProUGUI text in tabBarTextObjects)
+                text.color = inactiveColor;
+
+            menus[tab].gameObject.SetActive(true);
             tabBarTextObjects[tab].color = activeColor;
         }
 
         public virtual void DisableActiveTab()
         {
-            if(ActiveTab > -1 && ActiveTab < instantiatedSubmenus.Count)
+            if(ActiveTab > -1 && ActiveTab < menus.Count)
             {
-                instantiatedSubmenus[ActiveTab].gameObject.SetActive(false);
+                menus[ActiveTab].gameObject.SetActive(false);
                 tabBarTextObjects[ActiveTab].color = inactiveColor;
             }
         }
