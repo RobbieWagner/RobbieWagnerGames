@@ -1,48 +1,90 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Ink.Runtime;
-using RobbieWagnerGames;
-using System.Linq;
+using RobbieWagnerGames.Utilities;
 
-namespace RobbieWagnerGames
+namespace RobbieWagnerGames.Dialogue
 {
-    public class DialogueScene : MonoBehaviour
+    /// <summary>
+    /// Manages a sequence of dialogue events in a scene
+    /// </summary>
+    public class DialogueScene : MonoBehaviourSingleton<DialogueScene>
     {
-        public static DialogueScene Instance { get; private set; }
-        [SerializeField] private List<SceneEvent> sceneEvents;
-        [SerializeField] private Transform dialogueEventParent;
+        [Header("Scene Configuration")]
+        [SerializeField] private bool playOnAwake = true;
+        [SerializeField] private Transform sceneEventsParent;
 
-        private void Awake()
+        private readonly List<SceneEvent> sceneEvents = new List<SceneEvent>();
+
+        protected override void Awake()
         {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-            }
-            else
-            {
-                Instance = this;
-            }
+            base.Awake();
+            GatherSceneEvents();
 
-            StartCoroutine(PlayDialogueScene());
+            if (playOnAwake)
+            {
+                StartScene();
+            }
         }
 
-        private IEnumerator PlayDialogueScene()
+        /// <summary>
+        /// Collect all scene events from parent or manual list
+        /// </summary>
+        private void GatherSceneEvents()
         {
-            if (sceneEvents != null && sceneEvents.Count > 0)
-            {
-                foreach (SceneEvent sceneEvent in sceneEvents)
-                    yield return StartCoroutine(sceneEvent.RunSceneEvent());
-            }
-            else if (dialogueEventParent.childCount > 0)
-            {
-                sceneEvents = dialogueEventParent.GetComponentsInChildren<SceneEvent>().ToList();
+            sceneEvents.Clear();
 
-                foreach (SceneEvent sceneEvent in sceneEvents)
-                    yield return StartCoroutine(sceneEvent.RunSceneEvent());
+            if (sceneEventsParent != null && sceneEventsParent.childCount > 0)
+            {
+                sceneEvents.AddRange(sceneEventsParent.GetComponentsInChildren<SceneEvent>());
+            }
+        }
+
+        /// <summary>
+        /// Begin playing the dialogue scene
+        /// </summary>
+        public void StartScene()
+        {
+            StartCoroutine(PlaySceneCoroutine());
+        }
+
+        private IEnumerator PlaySceneCoroutine()
+        {
+            if (sceneEvents.Count == 0)
+            {
+                Debug.LogWarning("No scene events found to play");
+                yield break;
             }
 
-            StopCoroutine(PlayDialogueScene());
+            foreach (SceneEvent sceneEvent in sceneEvents)
+            {
+                if (sceneEvent != null)
+                {
+                    yield return StartCoroutine(sceneEvent.RunSceneEvent());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Add a scene event to be played
+        /// </summary>
+        public void AddSceneEvent(SceneEvent newEvent)
+        {
+            if (newEvent != null && !sceneEvents.Contains(newEvent))
+            {
+                sceneEvents.Add(newEvent);
+            }
+        }
+
+        /// <summary>
+        /// Remove a scene event from playback
+        /// </summary>
+        public void RemoveSceneEvent(SceneEvent eventToRemove)
+        {
+            if (eventToRemove != null)
+            {
+                sceneEvents.Remove(eventToRemove);
+            }
         }
     }
 }

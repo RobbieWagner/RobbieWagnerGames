@@ -1,145 +1,182 @@
-using RobbieWagnerGames;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class CharacterMovement2D : MonoBehaviour
+namespace RobbieWagnerGames.Managers
 {
-    [SerializeField] private UnitAnimator unitAnimator;
-    public bool canMove = true;
-    [HideInInspector] public bool moving = false;
-    private UnitAnimationState currentAnimationState;
-    private Vector2 movementVector = Vector2.zero;
-    [SerializeField] private float currentWalkSpeed = 3;
-    public Rigidbody2D rb;
-    public LayerMask collisionLayers;
-
-    [SerializeField] private AudioSource footstepAudioSource;
-
-    private Vector3 lastFramePos = Vector3.zero;
-
-    //[SerializeField][Range(-1, 0)] private float wallPushback = -.08f;
-    private HashSet<Collider2D> colliders;
-
-    public static CharacterMovement2D Instance { get; private set; }
-
-    private void Awake()
+    [RequireComponent(typeof(SpriteRenderer))]
+    public class CharacterMovement2D : MonoBehaviour
     {
-        if (Instance != null && Instance != this)
+        public static CharacterMovement2D Instance { get; private set; }
+
+        [SerializeField] private UnitAnimator unitAnimator;
+        [SerializeField] private float currentWalkSpeed = 3f;
+        [SerializeField] [Range(-1, 0)] private float wallPushback = -0.08f;
+        [SerializeField] private AudioSource footstepAudioSource;
+
+        private SpriteRenderer spriteRenderer;
+        private PlayerMovementActions inputActions;
+        private HashSet<Collider2D> colliders;
+        private Vector2 movementVector = Vector2.zero;
+        private Vector3 lastFramePos = Vector3.zero;
+        
+        public bool CanMove { get; set; } = true;
+        public bool IsMoving { get; private set; } = false;
+
+        private void Awake()
         {
-            Destroy(gameObject);
-        }
-        else
-        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            
             Instance = this;
+            
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            inputActions = new PlayerMovementActions();
+            colliders = new HashSet<Collider2D>();
+            
+            InitializeInput();
         }
 
-        colliders = new HashSet<Collider2D>();
-
-        InputManager.Instance.gameControls.PLAYER.Move.performed += OnMove;
-        InputManager.Instance.gameControls.PLAYER.Move.canceled += StopPlayer;
-    }
-
-    private void FixedUpdate() 
-    {
-        if (canMove && movementVector.y != 0)
+        private void InitializeInput()
         {
-            Vector2 normalizedMovement = movementVector.normalized;
-            Vector2 desiredVelocity = normalizedMovement * currentWalkSpeed;
-
-            Debug.Log(normalizedMovement);
-
-            Vector2 verticalMove = new Vector2(0, desiredVelocity.y);
-            RaycastHit2D hitVertical = Physics2D.Raycast(rb.position + verticalMove.normalized * .301f, verticalMove, Mathf.Abs(verticalMove.normalized.y * .001f), collisionLayers);
-
-            float finalY = hitVertical.collider == null ? verticalMove.y : 0;
-
-            rb.velocity = new Vector2(0, finalY);
+            inputActions.Enable();
+            InputManager.Instance.Controls.EXPLORATION.Move.performed += OnMove;
+            InputManager.Instance.Controls.EXPLORATION.Move.canceled += StopPlayer;
         }
-        else
-        {
-            // No movement input
-            rb.velocity = Vector2.zero;
-        }
-    }
 
-    private void OnMove(InputAction.CallbackContext context)
-    {
-        if(canMove)
+        private void LateUpdate()
         {
+            if (CanMove)
+            {
+                MoveCharacter();
+                HandleWallPushback();
+            }
+
+            lastFramePos = transform.position;
+            HandleMovementSounds();
+        }
+
+        private void MoveCharacter()
+        {
+            transform.Translate(movementVector * (currentWalkSpeed * Time.deltaTime));
+        }
+
+        private void HandleWallPushback()
+        {
+            foreach (var collider in colliders)
+            {
+                transform.position = Vector2.MoveTowards(transform.position, 
+                    collider.transform.position, wallPushback);
+            }
+        }
+
+        private void HandleMovementSounds()
+        {
+            if (IsMoving && footstepAudioSource != null && !footstepAudioSource.isPlaying)
+            {
+                PlayMovementSounds();
+            }
+        }
+
+        private void OnMove(InputAction.CallbackContext context)
+        {
+            if (!CanMove) return;
+
             Vector2 input = context.ReadValue<Vector2>();
-
-            if(movementVector.x != input.x && input.x != 0f)
-            {
-                //if(input.x > 0) unitAnimator.ChangeAnimationState(UnitAnimationState.WalkRight);
-                //else unitAnimator.ChangeAnimationState(UnitAnimationState.WalkLeft);
-                moving = true;
-            }
-            else if(input.x == 0 && movementVector.y != input.y && input.y != 0f)
-            {
-                //if(input.y > 0) unitAnimator.ChangeAnimationState(UnitAnimationState.WalkForward);
-                //else unitAnimator.ChangeAnimationState(UnitAnimationState.WalkBack);
-                moving = true;
-            }
-            else if(input.x == 0 && input.y == 0)
-            {
-                //if(movementVector.x > 0)unitAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
-                //else if(movementVector.x < 0)unitAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
-                //else if(movementVector.y > 0) unitAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
-                //else unitAnimator.ChangeAnimationState(UnitAnimationState.Idle);
-                moving = false;
-                //if(footstepAudioSource != null) StopMovementSounds();
-            }
-
+            UpdateMovementState(input);
             movementVector = input;
         }
-    }
 
-    private void OnDisable()
-    {
-        StopPlayer();
-    }
+        private void UpdateMovementState(Vector2 input)
+        {
+            if (movementVector.x != input.x && input.x != 0f)
+            {
+                UpdateHorizontalMovementAnimation(input.x);
+                IsMoving = true;
+            }
+            else if (input.x == 0 && movementVector.y != input.y && input.y != 0f)
+            {
+                UpdateVerticalMovementAnimation(input.y);
+                IsMoving = true;
+            }
+            else if (input == Vector2.zero)
+            {
+                SetIdleAnimation();
+                IsMoving = false;
+                StopMovementSounds();
+            }
+        }
 
-    public void StopPlayer(InputAction.CallbackContext context)
-    {
-        StopPlayer();
-    }
+        private void UpdateHorizontalMovementAnimation(float xInput)
+        {
+            unitAnimator.ChangeAnimationState(xInput > 0 ? 
+                UnitAnimationState.WalkRight : UnitAnimationState.WalkLeft);
+        }
 
-    public void StopPlayer()
-    {
-        //if(movementVector.x > 0) unitAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
-        //else if(movementVector.x < 0) unitAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
-        //else if(movementVector.y > 0) unitAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
-        //else if(movementVector != Vector2.zero) unitAnimator.ChangeAnimationState(UnitAnimationState.Idle);
+        private void UpdateVerticalMovementAnimation(float yInput)
+        {
+            unitAnimator.ChangeAnimationState(yInput > 0 ? 
+                UnitAnimationState.WalkForward : UnitAnimationState.WalkBack);
+        }
 
-        movementVector = Vector3.zero;
-        moving = false;
-        //if(footstepAudioSource != null) StopMovementSounds();
-    }
+        private void SetIdleAnimation()
+        {
+            if (movementVector.x > 0)
+                unitAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
+            else if (movementVector.x < 0)
+                unitAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
+            else if (movementVector.y > 0)
+                unitAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
+            else
+                unitAnimator.ChangeAnimationState(UnitAnimationState.Idle);
+        }
 
-    public void CeasePlayerMovement()
-    {
-        canMove = false;
-        StopPlayer();
-    }
+        private void OnDisable()
+        {
+            StopPlayer();
+        }
 
-    //public void PlayMovementSounds()
-    //{
-    //    footstepAudioSource.Play();
-    //}
+        public void StopPlayer(InputAction.CallbackContext context)
+        {
+            StopPlayer();
+        }
 
-    //public void StopMovementSounds()
-    //{
-    //    footstepAudioSource.Stop();
-    //}
+        public void StopPlayer()
+        { 
+            SetIdleAnimation();
+            movementVector = Vector2.zero;
+            IsMoving = false;
+            StopMovementSounds();
+        }
 
-    private void OnCollisionEnter2D(Collision2D other)
-    {
-        colliders.Add(other.collider);
-    }
+        public void PlayMovementSounds()
+        {
+            footstepAudioSource?.Play();
+        }
 
-    private void OnCollisionExit2D(Collision2D other)
-    {
-        colliders.Remove(other.collider);
+        public void StopMovementSounds()
+        {
+            footstepAudioSource?.Stop();
+        }
+
+        private void OnCollisionEnter2D(Collision2D other)
+        {
+            Debug.Log("New collision");
+            colliders.Add(other.collider);
+        }
+
+        private void OnCollisionExit2D(Collision2D other)
+        {
+            colliders.Remove(other.collider);
+        }
+
+        private void OnDestroy()
+        {
+            InputManager.Instance.Controls.EXPLORATION.Move.performed -= OnMove;
+            InputManager.Instance.Controls.EXPLORATION.Move.canceled -= StopPlayer;
+        }
     }
 }

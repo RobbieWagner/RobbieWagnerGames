@@ -1,39 +1,57 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using Ink.Runtime;
+using UnityEngine.UI;
+using DG.Tweening;
 
-namespace RobbieWagnerGames
+namespace RobbieWagnerGames.Dialogue
 {
+    /// <summary>
+    /// Represents a single choice in a dialogue system
+    /// </summary>
+    [RequireComponent(typeof(Button))]
     public class DialogueChoice : MonoBehaviour
     {
-        [SerializeField] private Color inactiveColor;
-        [SerializeField] private Color activeColor;
+        [Header("Visual Settings")]
+        [SerializeField] private Color inactiveColor = Color.gray;
+        [SerializeField] private Color activeColor = Color.white;
+        [SerializeField] private float fadeDuration = 0.2f;
 
-        public TextMeshProUGUI choiceText;
-        public Choice choice;
+        [Header("References")]
+        [SerializeField] private TextMeshProUGUI choiceText;
+        [SerializeField] private Button choiceButton;
+
+        public Choice InkChoice { get; private set; }
 
         private void Awake()
         {
-            choiceText.color = inactiveColor;
+            if (choiceButton == null) choiceButton = GetComponent<Button>();
+            SetInactive();
         }
 
+        /// <summary>
+        /// Initialize the choice with Ink story data
+        /// </summary>
+        public void Initialize(Choice inkChoice)
+        {
+            InkChoice = inkChoice;
+            choiceText.text = inkChoice.text;
+        }
+
+        /// <summary>
+        /// Visual feedback when choice is selected
+        /// </summary>
         public void SetActive()
         {
-            choiceText.color = activeColor;
+            choiceText.DOColor(activeColor, fadeDuration);
         }
 
+        /// <summary>
+        /// Visual feedback when choice is not selected
+        /// </summary>
         public void SetInactive()
         {
-            choiceText.color = inactiveColor;
-        }
-
-        public void Initialize(Choice newChoice)
-        {
-            choiceText.text = newChoice.text;
-            SetInactive();
+            choiceText.DOColor(inactiveColor, fadeDuration);
         }
     }
 }

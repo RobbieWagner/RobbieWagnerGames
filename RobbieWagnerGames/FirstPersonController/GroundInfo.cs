@@ -1,8 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace PsychOutDestined
+namespace RobbieWagnerGames.FirstPerson
 {
     public enum GroundType
     {
@@ -15,8 +13,15 @@ namespace PsychOutDestined
         Sand,
         Gravel
     }
+
+    /// <summary>
+    /// Defines the type of ground surface for footstep sounds and movement effects
+    /// </summary>
     public class GroundInfo : MonoBehaviour
     {
-        [SerializeField] public GroundType groundType = GroundType.None;
+        [Tooltip("Type of ground surface")]
+        [SerializeField] private GroundType groundType = GroundType.None;
+        
+        public GroundType Type => groundType;
     }
 }

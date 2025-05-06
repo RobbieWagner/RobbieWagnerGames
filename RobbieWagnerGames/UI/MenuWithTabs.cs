@@ -7,6 +7,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
+using RobbieWagnerGames.Managers;
 
 namespace RobbieWagnerGames.UI
 {
@@ -20,7 +21,8 @@ namespace RobbieWagnerGames.UI
         [SerializeField] protected Color inactiveColor;
         [SerializeField] protected Color activeColor;
 
-        private UIControls uiControls;
+        [Tooltip("Determines whether the explorationMenu should go to the first tab when the explorationMenu is enabled")]
+        [SerializeField] protected bool resetOnEnable = true;
 
         private int activeTab = -1;
         public int ActiveTab
@@ -51,23 +53,24 @@ namespace RobbieWagnerGames.UI
         protected override void Awake()
         {
             base.Awake();
-            uiControls = new UIControls();
-            uiControls.UI.NavigateTab.performed += NavigateTab;
         }
 
         protected override void OnEnable()
         {
             BuildMenu();
             base.OnEnable();
-            ActiveTab = 0;
+            if(resetOnEnable || ActiveTab < 0 || ActiveTab >= menus.Count)
+                ActiveTab = 0;
             EnableTab(ActiveTab);
-            uiControls.Enable();
+
+            InputManager.Instance.Controls.UI.NavigateTabs.performed += NavigateTab;
         }
 
         protected override void OnDisable()
         {
             base.OnDisable();
-            uiControls.Disable();
+
+            InputManager.Instance.Controls.UI.NavigateTabs.performed -= NavigateTab;
         }
 
         protected virtual void BuildMenu()
@@ -98,6 +101,7 @@ namespace RobbieWagnerGames.UI
                 text.color = inactiveColor;
 
             menus[tab].gameObject.SetActive(true);
+            menus[tab].OnOpenTab();
             tabBarTextObjects[tab].color = activeColor;
         }
 
@@ -106,8 +110,17 @@ namespace RobbieWagnerGames.UI
             if(ActiveTab > -1 && ActiveTab < menus.Count)
             {
                 menus[ActiveTab].gameObject.SetActive(false);
+                menus[ActiveTab].OnCloseTab();
                 tabBarTextObjects[ActiveTab].color = inactiveColor;
             }
+        }
+
+        public virtual void ToggleTabNavigation(bool on)
+        {
+            if(on)
+                InputManager.Instance.Controls.UI.NavigateTabs.Enable();
+            else
+                InputManager.Instance.Controls.UI.NavigateTabs.Disable();
         }
     }
 }

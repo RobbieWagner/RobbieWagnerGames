@@ -2,32 +2,67 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
 namespace RobbieWagnerGames.AI
 {
+    /// <summary>
+    /// Test script for demonstrating AI agent functionality
+    /// </summary>
     public class AITest : MonoBehaviour
     {
-        [SerializeField] private AIAgent testAgentPrefab;
-        [SerializeField] private Vector3 spawnPos;
+        [Header("Agent Settings")]
+        [SerializeField] private AIAgent testAgentPrefab = null;
+        [SerializeField] private Vector3 spawnPosition = Vector3.zero;
+        [SerializeField] private Vector3 initialMovePosition = new Vector3(3, 1, 3);
 
-        [SerializeField] private List<AITarget> agentTargets;
+        [Header("Target Settings")]
+        [SerializeField] private List<AITarget> agentTargets = new List<AITarget>();
+        [SerializeField] private float initialDelay = 1f;
+        [SerializeField] private float testDuration = 30f;
 
-        private void Awake()
+        private AIAgent testAgent;
+
+        private IEnumerator Start()
         {
-            StartCoroutine(RunTestCo());
+            yield return new WaitForSeconds(initialDelay);
+            yield return StartCoroutine(RunTestSequence());
         }
 
-        private IEnumerator RunTestCo()
+        private IEnumerator RunTestSequence()
         {
-            yield return null;
+            // Create and initialize agent
+            testAgent = AIManager.Instance.CreateAgent(testAgentPrefab, spawnPosition, agentTargets);
+            
+            if (testAgent == null)
+            {
+                Debug.LogError("Test failed - could not create agent");
+                yield break;
+            }
 
-            AIAgent agent = AIManager.Instance.AddAgentToScene(testAgentPrefab, Vector3.zero, agentTargets);
+            // Initial movement test
+            testAgent.MoveAgent(initialMovePosition);
+            Debug.Log($"Agent spawned at {spawnPosition} and commanded to move to {initialMovePosition}");
 
-            agent.MoveAgent(new Vector3(3, 1, 3));
+            // Wait for test duration
+            yield return new WaitForSeconds(testDuration);
 
-            yield return new WaitForSeconds(30);
+            // Target behavior test
+            if (agentTargets.Count > 0)
+            {
+                testAgent.SetTargets(agentTargets);
+                Debug.Log($"Agent assigned {agentTargets.Count} targets");
+            }
+            else
+            {
+                Debug.LogWarning("No targets assigned for second test phase");
+            }
+        }
 
-            agent.SetTargets(agentTargets, false, true);
+        private void OnDestroy()
+        {
+            if (testAgent != null)
+            {
+                AIManager.Instance.DestroyAgent(testAgent);
+            }
         }
     }
 }

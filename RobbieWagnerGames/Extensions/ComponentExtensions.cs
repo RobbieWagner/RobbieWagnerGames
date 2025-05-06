@@ -1,45 +1,44 @@
 using UnityEngine;
 
-namespace UnityExtensionMethods
+namespace RobbieWagnerGames.UnityExtensions
 {
     /// <summary>
-    /// Extension methods for Unity's Component class.
+    /// Provides extension methods for Unity's Component class
     /// </summary>
     public static class ComponentExtensions
     {
         /// <summary>
-        /// Determines whether a component of type T is attached to the game object of this component.
+        /// Adds component of type T
         /// </summary>
-        /// <typeparam name="T">The type of component to check for.</typeparam>
-        /// <param name="component">The component who's GameObject to check.</param>
-        /// <returns>True if a component of type T is attached to the GameObject of this component, otherwise false.</returns>
-        public static bool HasComponent<T>(this Component component) where T : Component
-        {
-            return component.gameObject.HasComponent<T>();
-        }
-        
-        /// <summary>
-        /// Adds a component of the specified type to the GameObject of this component.
-        /// </summary>
-        /// <typeparam name="T">The type of component to add.</typeparam>
-        /// <param name="component">The component who's GameObject to add the new component to.</param>
-        /// <returns>The added component.</returns>
         public static T AddComponent<T>(this Component component) where T : Component
         {
-            return component.gameObject.AddComponent<T>();
+            return component != null ? component.gameObject.AddComponent<T>() : null;
         }
-        
+
         /// <summary>
-        /// Gets or adds the specified component to the GameObject of this component.
-        /// If the component already exists, it's returned.
-        /// Otherwise, it adds a new component of the specified type and returns it.
+        /// Gets existing component or adds new one
         /// </summary>
-        /// <typeparam name="T">The type of component to get or add.</typeparam>
-        /// <param name="component">The component who's GameObject to get or add the component to.</param>
-        /// <returns>The component of the specified type attached to the GameObject.</returns>
         public static T GetOrAddComponent<T>(this Component component) where T : Component
         {
-            return component.gameObject.GetOrAddComponent<T>();
+            if (component == null) return null;
+            
+            T existing = component.GetComponent<T>();
+            return existing != null ? existing : component.AddComponent<T>();
+        }
+
+        /// <summary>
+        /// Gets component in parent or children
+        /// </summary>
+        public static T GetComponentInHierarchy<T>(this Component component, bool includeInactive = false) where T : Component
+        {
+            if (component == null) return null;
+            
+            T comp = component.GetComponentInParent<T>();
+            if (comp == null)
+            {
+                comp = component.GetComponentInChildren<T>(includeInactive);
+            }
+            return comp;
         }
     }
 }

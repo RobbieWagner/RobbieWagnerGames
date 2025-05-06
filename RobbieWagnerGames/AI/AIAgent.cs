@@ -1,95 +1,217 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering;
 
 namespace RobbieWagnerGames.AI
 {
     public enum AIState
     {
-        NONE = -1,
-        IDLE = 0,
-        MOVING = 1,
-        CHASING = 2
+        None = -1,
+        Idle = 0,
+        Moving = 1,
+        Chasing = 2
     }
 
-    // DEFINES THE BASE AI AGENT AND HELPFUL METHODS
-    // USEFUL FOR EASY, SIMPLE USES OF AI PATHFINDING, POTENTIALLY IF YOU HAVE A LOT OF AGENTS TO CONTROL
-    // YOU CAN ALSO CREATE A CHILD CLASS OF THIS IF YOU'D LIKE TO CREATE ALTERNATE BEHAVIORS
+    /// <summary>
+    /// Defines the base AI agent and helpful methods for pathfinding.
+    /// Useful for simple AI agents or when controlling many agents.
+    /// Can be inherited for custom behaviors.
+    /// </summary>
     public class AIAgent : MonoBehaviour
     {
-        public NavMeshAgent agent;
-
+        [Header("Navigation Settings")]
         [SerializeField] protected float idleWaitTime = 3f;
+        [SerializeField] protected float movementRange = 100f;
+        
+        public NavMeshAgent Agent { get; protected set; }
+        public AIState CurrentState { get; protected set; } = AIState.None;
+        public AITarget ChasingTarget { get; protected set; }
+
+        protected List<AITarget> currentTargets = new List<AITarget>();
         protected float currentWaitTime;
 
-        [SerializeField] protected float movementRange = 100f;
-
-        protected List<AITarget> currentTargets = new List<AITarget>(); // Use [HideInInspector] if needed
-        public AITarget chasingTarget { get; protected set; }
-
-        protected AIState currentState = AIState.NONE;
-        public AIState CurrentState
+        protected virtual void Awake()
         {
-            get 
+            Agent = GetComponent<NavMeshAgent>();
+            if (Agent == null)
             {
-                return currentState;
-            }
-            set 
-            {
-                if(value == currentState)
-                    return;
-                currentState = value;
+                Debug.LogError("NavMeshAgent component is missing!", this);
             }
         }
-        //TODO: Add a delegate and event? Does Observer pattern need to be implemented?
 
-        #region State Changing
+        protected virtual void Update()
+        {
+            UpdateState();
+        }
+
+        #region State Management
+        protected virtual void UpdateState()
+        {
+            switch (CurrentState)
+            {
+                case AIState.Idle:
+                    UpdateIdleState();
+                    break;
+                case AIState.Moving:
+                    UpdateMovingState();
+                    break;
+                case AIState.Chasing:
+                    UpdateChaseState();
+                    break;
+            }
+        }
+
+        protected virtual void ChangeState(AIState newState)
+        {
+            if (newState == CurrentState) return;
+            CurrentState = newState;
+            OnStateChanged(newState);
+        }
+
+        protected virtual void OnStateChanged(AIState newState)
+        {
+            // Can be overridden for custom state change behavior
+        }
+        #endregion
+
+        #region State Behaviors
         public virtual void GoIdle()
         {
-            agent.isStopped = true;
-            CurrentState = AIState.IDLE;
+            Agent.isStopped = true;
+            ChangeState(AIState.Idle);
+        }
+
+        protected virtual void UpdateIdleState()
+        {
+            currentWaitTime += Time.deltaTime;
+            if (currentWaitTime >= idleWaitTime)
+            {
+                currentWaitTime = 0;
+                MoveToRandomSpot(movementRange);
+            }
+        }
+
+        protected virtual void UpdateMovingState()
+        {
+            if (HasReachedDestination())
+            {
+                GoIdle();
+            }
+        }
+
+        protected virtual void UpdateChaseState()
+        {
+            if (ChasingTarget == null)
+            {
+                GoIdle();
+                return;
+            }
+
+            SetDestination(ChasingTarget.transform.position);
+
+            if (HasReachedDestination())
+            {
+                OnReachTarget(ChasingTarget);
+            }
+        }
+        #endregion
+
+        #region Navigation
+        public virtual bool SetDestination(Vector3 destination)
+        {
+            Agent.isStopped = false;
+            return Agent.SetDestination(destination);
         }
 
         public virtual bool MoveAgent(Vector3 destination)
         {
-            CurrentState = AIState.MOVING;
+            ChangeState(AIState.Moving);
             bool success = SetDestination(destination);
 
             if (!success)
             {
                 GoIdle();
-                Debug.LogWarning("failed to move agent");
+                Debug.LogWarning("Failed to move agent to destination");
             }
 
             return success;
         }
 
-        public bool ChaseNearestTarget()
+        public virtual void MoveToRandomSpot(float range = 100f)
         {
-            Debug.Log("Chase Nearest Target.");
-            AITarget closestTarget = null;
-            float closestDistance = float.MaxValue;
+            StartCoroutine(MoveToRandomSpotCoroutine(transform.position, range));
+        }
 
-            if (currentTargets == null || !currentTargets.Any())
+        protected virtual IEnumerator MoveToRandomSpotCoroutine(Vector3 center, float range, int maxAttempts = 100, int attemptsBeforeYield = 10)
+        {
+            int attempts = 0;
+            bool success = false;
+            
+            while (attempts < maxAttempts && !success)
             {
-                Debug.LogWarning("Could not chase target: current targets list found empty.");
+                attempts++;
+                
+                if (attempts % attemptsBeforeYield == 0)
+                    yield return null;
+                
+                Vector3 randomDirection = Random.insideUnitSphere * range;
+                randomDirection += center;
+                
+                if (NavMesh.SamplePosition(randomDirection, out NavMeshHit hit, range, NavMesh.AllAreas))
+                {
+                    success = MoveAgent(hit.position);
+                }
+            }
+            
+            if (!success)
+            {
+                Debug.LogWarning($"Failed to find valid navigation position after {maxAttempts} attempts");
+            }
+        }
+
+        protected virtual bool HasReachedDestination()
+        {
+            return !Agent.pathPending 
+                   && Agent.remainingDistance <= Agent.stoppingDistance 
+                   && (!Agent.hasPath || Agent.velocity.sqrMagnitude == 0f);
+        }
+        #endregion
+
+        #region Target Handling
+        public virtual bool ChaseNearestTarget()
+        {
+            if (currentTargets == null || currentTargets.Count == 0)
+            {
+                Debug.LogWarning("No targets available to chase");
                 GoIdle();
                 return false;
             }
 
-            foreach (AITarget target in currentTargets)
+            AITarget closestTarget = FindClosestReachableTarget();
+            
+            if (closestTarget != null)
+            {
+                ChangeState(AIState.Chasing);
+                ChasingTarget = closestTarget;
+                return true;
+            }
+
+            return false;
+        }
+
+        protected virtual AITarget FindClosestReachableTarget()
+        {
+            AITarget closestTarget = null;
+            float closestDistance = float.MaxValue;
+
+            foreach (AITarget target in currentTargets.Where(t => t != null))
             {
                 NavMeshPath path = new NavMeshPath();
-                if (agent.CalculatePath(target.transform.position, path) && path.status == NavMeshPathStatus.PathComplete)
+                if (Agent.CalculatePath(target.transform.position, path) && path.status == NavMeshPathStatus.PathComplete)
                 {
-                    float pathLength = AIManager.GetPathLength(path);
+                    float pathLength = AIManager.CalculatePathLength(path);
 
                     if (pathLength < closestDistance)
                     {
@@ -99,129 +221,40 @@ namespace RobbieWagnerGames.AI
                 }
             }
 
-            if (closestTarget != null)
+            return closestTarget;
+        }
+
+        public virtual void SetTargets(List<AITarget> targets, bool clearExisting = false, bool chaseNearest = true)
+        {
+            if (clearExisting)
             {
-                CurrentState = AIState.CHASING;
-                chasingTarget = closestTarget;
-                return true;
+                currentTargets.Clear();
             }
+            
+            currentTargets.AddRange(targets.Where(t => t != null));
 
-            return false;
-        }
-        #endregion
-
-        #region States and Updates
-
-        protected void Update()
-        {
-            switch (currentState) 
+            if (chaseNearest)
             {
-                case AIState.IDLE:
-                    UpdateIdleState();
-                    break;
-                case AIState.MOVING:
-                    UpdateMovingState();
-                    break;
-                case AIState.CHASING:
-                    UpdateChaseState();
-                    break;
-                default:
-                    break;
+                ChaseNearestTarget();
             }
-        }
-
-        protected virtual void UpdateIdleState()
-        {
-            currentWaitTime += Time.deltaTime;
-            if(currentWaitTime >= idleWaitTime)
-            {
-                currentWaitTime = 0;
-                MoveToRandomSpot(movementRange);
-            }
-        }
-
-        protected virtual void UpdateMovingState()
-        {
-            if (agent.destination == null || AIManager.GetPathLength(agent.path) < .05f)
-                GoIdle();
-        }
-
-        protected virtual void UpdateChaseState()
-        {
-            SetDestination(chasingTarget.transform.position);
-
-            if (agent.destination == null || chasingTarget == null ||  AIManager.GetPathLength(agent.path) < .05f)
-                OnReachTarget(chasingTarget);
         }
 
         protected virtual void OnCollisionEnter(Collision collision)
         {
-            if(CurrentState == AIState.CHASING)
-            {
-                AITarget target = collision.gameObject.GetComponent<AITarget>();
+            if (CurrentState != AIState.Chasing) return;
 
-                if(target != null && chasingTarget == target)
-                    OnReachTarget(chasingTarget);
+            AITarget target = collision.gameObject.GetComponent<AITarget>();
+            if (target != null && ChasingTarget == target)
+            {
+                OnReachTarget(ChasingTarget);
             }
         }
 
         protected virtual void OnReachTarget(AITarget target)
         {
-            target.OnCaught(this);
-            currentTargets.Remove(chasingTarget);
+            target?.OnCaught(this);
+            currentTargets.Remove(target);
             ChaseNearestTarget();
-        }
-        #endregion
-
-        #region Worldspace Movement
-
-        public virtual bool SetDestination(Vector3 destination)
-        {
-            agent.isStopped = false;
-            return agent.SetDestination(destination);
-        }
-
-        public virtual void MoveToRandomSpot(float range = 100f)
-        {
-            StartCoroutine(MoveToRandomSpotCo(transform.position, range, 10000));
-        }
-
-        public virtual IEnumerator MoveToRandomSpotCo(Vector3 offset, float range = 100f, int tryLimit = 10000, int triesBeforeYield = 25)
-        { 
-            int tries = 0;
-            bool success = false;
-            while (tries < tryLimit)
-            {
-                tries++;
-                if(tries % triesBeforeYield == 0)
-                    yield return null;
-                
-                Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * range;
-                randomDirection += offset;
-                NavMeshHit hit;
-                if (NavMesh.SamplePosition(randomDirection, out hit, range, NavMesh.AllAreas))
-                {
-                    MoveAgent(hit.position);
-                    success = true;
-                    yield break;
-                }
-            }
-            
-            if(!success)
-                Debug.LogWarning($"Could not find a path after trying {tryLimit} times!");
-        }
-        #endregion
-
-        #region AITarget Chasing
-        public virtual void SetTargets(List<AITarget> targets, bool removeOldTargets = false, bool chaseNearestTarget = true)
-        {
-            if(removeOldTargets)
-                currentTargets.Clear();
-            
-            currentTargets.AddRange(targets);
-
-            if (chaseNearestTarget)
-                ChaseNearestTarget();
         }
         #endregion
     }

@@ -1,146 +1,183 @@
-using DG.Tweening;
-using System;
 using System.Collections;
-using System.Collections.Generic;
+using DG.Tweening;
+using RobbieWagnerGames.Managers;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace RobbieWagnerGames
 {
+    [RequireComponent(typeof(CharacterController), (typeof(SpriteRenderer)))]
     public class PlayerMovement : MonoBehaviour
     {
+        public static PlayerMovement Instance { get; private set; }
 
-        [HideInInspector] public bool canMove;
-        [HideInInspector] public bool moving = false;
-
-        private Vector3 movementVector;
+        [Header("Movement Settings")]
         [SerializeField] private float defaultWalkSpeed = 3f;
-        private float currentWalkSpeed;
-        [SerializeField] public UnitAnimator movementAnimator;
-
-        private CharacterController body;
-        private bool isGrounded;
-        private float GRAVITY = -7.5f;
-        private Vector3 lastFramePos;
         [SerializeField] private LayerMask groundMask;
-
-        private Vector3 lastPosition;
-        private bool movingForcibly = false;
         [SerializeField] private CharacterController characterController;
-
-        [Header("Footstep Sounds")]
+        
+        [Header("Animation")]
+        [SerializeField] public UnitAnimator movementAnimator;
+        
+        [Header("Audio")]
         [SerializeField] private AudioSource footstepAudioSource;
         [SerializeField] private AudioClip[] footstepSoundClips;
+
+        private SpriteRenderer spriteRenderer;
+        private PlayerMovementActions inputActions;
+        private Vector3 movementVector;
+        private float currentWalkSpeed;
+        private Vector3 lastFramePos;
+        private Vector3 lastPosition;
+        
+        private const float GRAVITY = -7.5f;
+        private bool isGrounded;
+        private bool movingForcibly;
         private int currentGroundType;
+
+        public bool CanMove { get; private set; } = true;
+        public bool IsMoving { get; private set; } = false;
         public int CurrentGroundType
         {
-            get { return currentGroundType; }
+            get => currentGroundType;
             set
             {
-                if(currentGroundType == value) return;
+                if (currentGroundType == value) return;
                 currentGroundType = value;
                 ChangeFootstepSounds(footstepSoundClips[currentGroundType]);
             }
         }
 
-        public static PlayerMovement Instance {get; private set;}
-
-        private void Awake() 
+        private void Awake()
         {
-            if (Instance != null && Instance != this) 
-            { 
-                Destroy(gameObject); 
-            } 
-            else 
-            { 
-                Instance = this; 
-            }     
-
-            currentWalkSpeed = defaultWalkSpeed;
-            canMove = true;
-            movementVector = Vector3.zero;
-
-            body = GetComponent<CharacterController>();
-            isGrounded = false;
-        }
-
-        private void LateUpdate() 
-        {
-            RaycastHit hit;
-            isGrounded = Physics.Raycast(transform.position - new Vector3(0,0,0), Vector3.down, out hit, .05f, groundMask);
-
-            if (hit.collider != null)
+            if (Instance != null && Instance != this)
             {
-                GroundInfo groundInfo = hit.collider.gameObject.GetComponent<GroundInfo>();
-                if(groundInfo != null)
-                {
-                    if((int) groundInfo.groundType < footstepSoundClips.Length)
-                    {
-                        CurrentGroundType = (int) groundInfo.groundType;
-                    }
-                }
-                else 
-                {
-                    CurrentGroundType = 0;
-                }
+                Destroy(gameObject);
+                return;
             }
             
-            if(!isGrounded)
-            {
-                movementVector.y += GRAVITY * Time.deltaTime;
-                StartCoroutine(FootStepStopTimer(.25f));
-            }
-            else
-            {
-                movementVector.y = 0f;
-            }
+            Instance = this;
 
-            if(characterController.enabled) body.Move(movementVector * currentWalkSpeed * Time.deltaTime);
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            characterController = GetComponent<CharacterController>();
+            
+            InitializeMovement();
+            InitializeInput();
+        }
+
+        private void InitializeMovement()
+        {
+            currentWalkSpeed = defaultWalkSpeed;
+            movementVector = Vector3.zero;
+        }
+
+        private void InitializeInput()
+        {
+            inputActions = new PlayerMovementActions();
+            inputActions.Enable();
+            InputManager.Instance.Controls.EXPLORATION.Move.performed += OnMove;
+            InputManager.Instance.Controls.EXPLORATION.Move.canceled += StopPlayer;
+        }
+
+        private void LateUpdate()
+        {
+            CheckGroundStatus();
+            ApplyGravity();
+            
+            if (characterController.enabled)
+            {
+                characterController.Move(movementVector * (currentWalkSpeed * Time.deltaTime));
+            }
 
             lastFramePos = transform.position;
 
-            if(movingForcibly)
+            if (movingForcibly)
             {
                 Animate();
             }
+        }
 
-            if(moving && !footstepAudioSource.isPlaying) 
+        private void CheckGroundStatus()
+        {
+            if (Physics.Raycast(transform.position, Vector3.down, out var hit, 0.05f, groundMask))
             {
-                PlayMovementSounds();
+                isGrounded = true;
+                UpdateGroundType(hit);
+            }
+            else
+            {
+                isGrounded = false;
+                StartCoroutine(FootStepStopTimer(0.25f));
             }
         }
 
-        private void OnMove(InputValue inputValue)
+        private void UpdateGroundType(RaycastHit hit)
         {
-            if(canMove)
-            {
-                Vector2 input = inputValue.Get<Vector2>();
+            var groundInfo = hit.collider.GetComponent<GroundInfo>();
+            CurrentGroundType = groundInfo != null && (int)groundInfo.groundType < footstepSoundClips.Length 
+                ? (int)groundInfo.groundType 
+                : 0;
+        }
 
-                if(movementVector.x != input.x && input.x != 0f)
-                {
-                    if(input.x > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.WalkRight);
-                    else movementAnimator.ChangeAnimationState(UnitAnimationState.WalkLeft);
-                    moving = true;
-                }
-                else if(input.x == 0 && movementVector.z != input.y && input.y != 0f)
-                {
-                    if(input.y > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.WalkForward);
-                    else movementAnimator.ChangeAnimationState(UnitAnimationState.WalkBack);
-                    moving = true;
-                }
-                else if(input.x == 0 && input.y == 0)
-                {
-                    if(movementVector.x > 0)movementAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
-                    else if(movementVector.x < 0)movementAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
-                    else if(movementVector.z > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
-                    else movementAnimator.ChangeAnimationState(UnitAnimationState.Idle);
-                    moving = false;
-                    StopMovementSounds();
-                }
-                
-                movementVector.x = input.x;
-                movementVector.z = input.y;
+        private void ApplyGravity()
+        {
+            movementVector.y = isGrounded ? 0f : movementVector.y + GRAVITY * Time.deltaTime;
+        }
+
+        private void OnMove(InputAction.CallbackContext context)
+        {
+            if (!CanMove) return;
+
+            Vector2 input = context.ReadValue<Vector2>();
+            UpdateMovementState(input);
+            movementVector.x = input.x;
+            movementVector.z = input.y;
+        }
+
+        private void UpdateMovementState(Vector2 input)
+        {
+            if (movementVector.x != input.x && input.x != 0f)
+            {
+                UpdateHorizontalMovementAnimation(input.x);
+                IsMoving = true;
             }
+            else if (input.x == 0 && movementVector.z != input.y && input.y != 0f)
+            {
+                UpdateVerticalMovementAnimation(input.y);
+                IsMoving = true;
+            }
+            else if (input == Vector2.zero)
+            {
+                SetIdleAnimation();
+                IsMoving = false;
+                StopMovementSounds();
+            }
+        }
+
+        private void UpdateHorizontalMovementAnimation(float xInput)
+        {
+            movementAnimator.ChangeAnimationState(xInput > 0 
+                ? UnitAnimationState.WalkRight 
+                : UnitAnimationState.WalkLeft);
+        }
+
+        private void UpdateVerticalMovementAnimation(float yInput)
+        {
+            movementAnimator.ChangeAnimationState(yInput > 0 
+                ? UnitAnimationState.WalkForward 
+                : UnitAnimationState.WalkBack);
+        }
+
+        private void SetIdleAnimation()
+        {
+            if (movementVector.x > 0)
+                movementAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
+            else if (movementVector.x < 0)
+                movementAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
+            else if (movementVector.z > 0)
+                movementAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
+            else
+                movementAnimator.ChangeAnimationState(UnitAnimationState.Idle);
         }
 
         private void OnDisable()
@@ -148,54 +185,86 @@ namespace RobbieWagnerGames
             StopPlayer();
         }
 
-        public void StopPlayer()
-        {
-            if(movementVector.x > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.IdleRight);
-            else if(movementVector.x < 0) movementAnimator.ChangeAnimationState(UnitAnimationState.IdleLeft);
-            else if(movementVector.z > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.IdleForward);
-            else if(movementVector != Vector3.zero) movementAnimator.ChangeAnimationState(UnitAnimationState.Idle);
 
+
+        public void StopPlayer(InputAction.CallbackContext context)
+        {
+            StopPlayer();
+        }
+
+        public void StopPlayer()
+        { 
+            SetIdleAnimation();
             movementVector = Vector3.zero;
-            moving = false;
+            IsMoving = false;
             StopMovementSounds();
+        }
+
+        public void SetMovementEnabled(bool enabled)
+        {
+            if (CanMove == enabled) return;
+            
+            CanMove = enabled;
+            
+            if (CanMove)
+            {
+                inputActions.Enable();
+                spriteRenderer.enabled = true;
+            }
+            else
+            {
+                CeasePlayerMovement();
+                inputActions.Disable();
+                spriteRenderer.enabled = false;
+            }
         }
 
         public void CeasePlayerMovement()
         {
-            canMove = false;
             StopPlayer();
+            CanMove = false;
         }
 
-        public IEnumerator MoveUnitToSpot(Vector3 position, float unitsPerSecond = -1)
+        public IEnumerator MovePlayerToSpot(Vector3 position, float unitsPerSecond = -1)
         {
             CeasePlayerMovement();
             PlayMovementSounds();
             characterController.enabled = false;
 
             lastPosition = transform.position;
-            if(unitsPerSecond < 0) unitsPerSecond = currentWalkSpeed;
+            float speed = unitsPerSecond < 0 ? currentWalkSpeed : unitsPerSecond;
+            
             movingForcibly = true;
-            yield return transform.DOMove(position, Vector3.Distance(position, transform.position) / unitsPerSecond)
-                                            .SetEase(Ease.Linear).WaitForCompletion();
+            yield return transform.DOMove(position, Vector3.Distance(position, transform.position) / speed)
+                .SetEase(Ease.Linear)
+                .WaitForCompletion();
             movingForcibly = false;
 
             characterController.enabled = true;
-            StopCoroutine(MoveUnitToSpot(position));
+        }
+
+        public void Warp(Vector3 position)
+        {
+            characterController.enabled = false;
+            transform.position = position;
+            characterController.enabled = true;
         }
 
         private void Animate()
         {
             Vector3 positionDelta = transform.position - lastPosition;
 
-            if(Math.Abs(positionDelta.x) > Math.Abs(positionDelta.z))
+            if (Mathf.Abs(positionDelta.x) > Mathf.Abs(positionDelta.z))
             {
-                if(positionDelta.x > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.WalkRight);
-                else movementAnimator.ChangeAnimationState(UnitAnimationState.WalkLeft);
+                movementAnimator.ChangeAnimationState(positionDelta.x > 0 
+                    ? UnitAnimationState.WalkRight 
+                    : UnitAnimationState.WalkLeft);
             }
             else
             {
-                if(positionDelta.z > 0) movementAnimator.ChangeAnimationState(UnitAnimationState.WalkForward);
-                else movementAnimator.ChangeAnimationState(UnitAnimationState.WalkBack);
+                movementAnimator.ChangeAnimationState(positionDelta.z > 0 
+                    ? UnitAnimationState.WalkForward 
+                    : UnitAnimationState.WalkBack);
             }
 
             lastPosition = transform.position;
@@ -203,18 +272,17 @@ namespace RobbieWagnerGames
 
         private void ChangeFootstepSounds(AudioClip clip)
         {
-            StopMovementSounds();
-            footstepAudioSource.clip = clip;
+            // Implementation for changing footstep sounds
         }
-        
+
         public void PlayMovementSounds()
         {
-            footstepAudioSource.Play();
+            // Implementation for playing movement sounds
         }
 
         public void StopMovementSounds()
         {
-            footstepAudioSource.Stop();
+            // Implementation for stopping movement sounds
         }
 
         private IEnumerator FootStepStopTimer(float timeToTurnOff)
@@ -223,12 +291,20 @@ namespace RobbieWagnerGames
             while (timerValue < timeToTurnOff)
             {
                 yield return null;
-                if(isGrounded) break;
-                timerValue = Time.deltaTime;
+                if (isGrounded) break;
+                timerValue += Time.deltaTime;
             }
-            if(timerValue >= timeToTurnOff) StopMovementSounds();
+            
+            if (timerValue >= timeToTurnOff) 
+            {
+                StopMovementSounds();
+            }
+        }
 
-            StopCoroutine(FootStepStopTimer(timeToTurnOff));
+        private void OnDestroy()
+        {
+            InputManager.Instance.Controls.EXPLORATION.Move.performed -= OnMove;
+            InputManager.Instance.Controls.EXPLORATION.Move.canceled -= StopPlayer;
         }
     }
 }

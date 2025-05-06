@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace RobbieWagnerGames.Minijam164
+namespace RobbieWagnerGames.UI
 {
     public class ScreenCover : MonoBehaviour
     {
@@ -20,20 +20,39 @@ namespace RobbieWagnerGames.Minijam164
                 Instance = this;
         }
 
+        public void ToggleScreenCover(bool on)
+        {
+            if(on)
+            {
+                canvas.enabled = true;
+                screenCover.color = Color.black;
+            }
+            else
+            {
+                canvas.enabled = false;
+            }
+        }
+
         public IEnumerator FadeCoverIn(float time = 1f)
         {
-            canvas.enabled = false;
-            screenCover.color = Color.clear;
-            canvas.enabled = true;
-            yield return screenCover.DOColor(Color.black, time).SetEase(Ease.Linear).WaitForCompletion();
+            if (!canvas.enabled)
+            {
+                canvas.enabled = false;
+                screenCover.color = Color.clear;
+                canvas.enabled = true;
+                yield return screenCover.DOColor(Color.black, time).SetEase(Ease.Linear).WaitForCompletion();
+            }
         }
 
         public IEnumerator FadeCoverOut(float time = 1f)
         {
-            screenCover.color = Color.black;
-            canvas.enabled = true;
-            yield return screenCover.DOColor(Color.clear, time).SetEase(Ease.Linear).WaitForCompletion();
-            canvas.enabled = false;
+            if (canvas.enabled)
+            {
+                screenCover.color = Color.black;
+                canvas.enabled = true;
+                yield return screenCover.DOColor(Color.clear, time).SetEase(Ease.Linear).WaitForCompletion();
+                canvas.enabled = false;
+            }
         }
     }
 }

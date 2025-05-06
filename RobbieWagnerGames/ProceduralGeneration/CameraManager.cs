@@ -1,43 +1,23 @@
-using DG.Tweening;
-using System;
-using System.Collections;
-using System.Collections.Generic;
+using RobbieWagnerGames.Utilities;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace RobbieWagnerGames.TileSelectionGame
 {
-    public class CameraManager: MonoBehaviour
+    public class CameraManager : MonoBehaviourSingleton<CameraManager>
     {
-        [SerializeField] private Camera gameCamera;
-        [SerializeField] private Vector3 cameraPosOffset;
-        private Coroutine currentMovementCo;
+        [SerializeField] private Camera _gameCamera;
+        [SerializeField] private Vector3 _cameraPosOffset;
 
-        public static CameraManager instance { get; private set; }
+        public Camera GameCamera => _gameCamera;
 
-        private void Awake()
+        protected override void Awake()
         {
-            if (instance == null)
-                instance = this;
-            else
-                Destroy(gameObject);
-
-            if(gameCamera == null)
-                gameCamera = Camera.main;
+            base.Awake();
+            
+            if (_gameCamera == null)
+            {
+                _gameCamera = Camera.main;
+            }
         }
-
-        //private void CenterCameraOnSelection(Selectable selectable)
-        //{
-        //    if(currentMovementCo != null)
-        //        StopCoroutine(currentMovementCo);
-        //    currentMovementCo = StartCoroutine(CenterCameraOnSelectionCo(selectable));
-        //}
-
-        //private IEnumerator CenterCameraOnSelectionCo(Selectable selectable)
-        //{
-        //    Vector3 position = selectable.transform.position + cameraPosOffset;
-        //    yield return gameCamera.transform.DOMove(position, .5f);
-        //    currentMovementCo = null;    
-        //}
     }
 }

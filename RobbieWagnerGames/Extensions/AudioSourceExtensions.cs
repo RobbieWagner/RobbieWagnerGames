@@ -3,116 +3,127 @@ using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace UnityExtensionMethods
+namespace RobbieWagnerGames.UnityExtensions
 {
     /// <summary>
-    /// Extension methods for Unity's AudioSource class.
+    /// Provides extension methods for Unity's AudioSource component
     /// </summary>
     public static class AudioSourceExtensions
     {
-        /// <summary>
-        /// Fades in the AudioSource to the target volume over a specified duration.
-        /// This is a coroutine that needs to be started by calling StartCoroutine on a MonoBehaviour.
-        /// </summary>
-        /// <param name="audioSource">The AudioSource to fade in.</param>
-        /// <param name="duration">The duration of the fade-in effect in seconds.</param>
-        /// <param name="targetVolume">The desired volume to fade in to (between 0 and 1).</param>
-        /// <param name="onComplete">An optional callback to be invoked when the fade-in is complete.</param>
-        /// <returns>An IEnumerator that can be used in a Coroutine to control the fade-in process.</returns>
-        public static IEnumerator FadeIn(this AudioSource audioSource, float duration, float targetVolume, Action onComplete = null)
-        {
-            if(audioSource.volume >= targetVolume)
-                yield break;
-            
-            float currentTime = 0;
-            float endVolume = Mathf.Clamp(targetVolume, 0f, 1f);
+        private const float MinVolume = 0f;
+        private const float MaxVolume = 1f;
 
-            while (currentTime < duration)
+        /// <summary>
+        /// Fades an AudioSource's volume in over time (coroutine version)
+        /// </summary>
+        /// <param name="audioSource">Target AudioSource</param>
+        /// <param name="duration">Fade duration in seconds</param>
+        /// <param name="targetVolume">Target volume (clamped 0-1)</param>
+        /// <param name="useUnscaledTime">Whether to ignore Time.timeScale</param>
+        /// <param name="onComplete">Callback when fade completes</param>
+        public static IEnumerator FadeIn(this AudioSource audioSource, 
+            float duration, 
+            float targetVolume = MaxVolume,
+            bool useUnscaledTime = true,
+            Action onComplete = null)
+        {
+            if (audioSource == null) yield break;
+            if (audioSource.volume >= targetVolume) yield break;
+
+            targetVolume = Mathf.Clamp(targetVolume, MinVolume, MaxVolume);
+            float startVolume = audioSource.volume;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
             {
-                currentTime += Time.unscaledDeltaTime;
-                audioSource.volume = Mathf.Lerp(0, endVolume, currentTime / duration);
+                elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                audioSource.volume = Mathf.Lerp(startVolume, targetVolume, elapsed / duration);
                 yield return null;
             }
 
-            audioSource.volume = endVolume;
+            audioSource.volume = targetVolume;
             onComplete?.Invoke();
         }
 
         /// <summary>
-        /// Fades out the AudioSource from its current volume to silence over a specified duration.
-        /// This is a coroutine that needs to be started by calling StartCoroutine on a MonoBehaviour.
+        /// Fades an AudioSource's volume out over time (coroutine version)
         /// </summary>
-        /// <param name="audioSource">The AudioSource to fade out.</param>
-        /// <param name="duration">The duration of the fade-out effect in seconds.</param>
-        /// <param name="onComplete">An optional callback to be invoked when the fade-out is complete.</param>
-        /// <returns>An IEnumerator that can be used in a Coroutine to control the fade-out process.</returns>
-        public static IEnumerator FadeOut(this AudioSource audioSource, float duration, Action onComplete = null)
+        /// <param name="audioSource">Target AudioSource</param>
+        /// <param name="duration">Fade duration in seconds</param>
+        /// <param name="useUnscaledTime">Whether to ignore Time.timeScale</param>
+        /// <param name="onComplete">Callback when fade completes</param>
+        public static IEnumerator FadeOut(this AudioSource audioSource, 
+            float duration,
+            bool useUnscaledTime = true,
+            Action onComplete = null)
         {
-            float currentTime = 0;
-            float startingVolume = audioSource.volume;
+            if (audioSource == null) yield break;
 
-            while (currentTime < duration)
+            float startVolume = audioSource.volume;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
             {
-                currentTime += Time.unscaledDeltaTime;
-                audioSource.volume = Mathf.Lerp(startingVolume, 0, currentTime / duration);
+                elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                audioSource.volume = Mathf.Lerp(startVolume, MinVolume, elapsed / duration);
                 yield return null;
             }
 
-            audioSource.volume = 0;
+            audioSource.volume = MinVolume;
             onComplete?.Invoke();
         }
-        
+
 #if CSHARP_7_3_OR_NEWER
-        
         /// <summary>
-        /// Asynchronously fades in the AudioSource to a specified target volume over a specified duration.
+        /// Asynchronously fades an AudioSource's volume in
         /// </summary>
-        /// <param name="audioSource">The AudioSource to fade in.</param>
-        /// <param name="duration">The duration of the fade-in in seconds.</param>
-        /// <param name="targetVolume">The target volume to reach during the fade-in operation.</param>
-        /// <param name="onComplete">Optional action to invoke when the fade-in is complete.</param>
-        public static async void FadeInAsync(this AudioSource audioSource, float duration, float targetVolume, Action onComplete = null)
+        public static async Task FadeInAsync(this AudioSource audioSource,
+            float duration,
+            float targetVolume = MaxVolume,
+            bool useUnscaledTime = true,
+            Action onComplete = null)
         {
-            if(audioSource.volume >= targetVolume)
-                return;
-            
-            float currentTime = 0;
-            float endVolume = Mathf.Clamp(targetVolume, 0f, 1f);
+            if (audioSource == null) return;
+            if (audioSource.volume >= targetVolume) return;
 
-            while (currentTime < duration)
+            targetVolume = Mathf.Clamp(targetVolume, MinVolume, MaxVolume);
+            float startVolume = audioSource.volume;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
             {
-                currentTime += Time.unscaledDeltaTime;
-                audioSource.volume = Mathf.Lerp(0, endVolume, currentTime / duration);
+                elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                audioSource.volume = Mathf.Lerp(startVolume, targetVolume, elapsed / duration);
                 await Task.Yield();
             }
 
-            audioSource.volume = endVolume;
+            audioSource.volume = targetVolume;
             onComplete?.Invoke();
         }
-        
-        /// <summary>
-        /// Asynchronously fades out the volume of the AudioSource over a specified duration.
-        /// </summary>
-        /// <param name="audioSource">The AudioSource to fade out.</param>
-        /// <param name="duration">The duration in seconds for the fade-out effect.</param>
-        /// <param name="onComplete">Optional callback action to invoke when the fade-out completes.</param>
-        public static async void FadeOutAsync(this AudioSource audioSource, float duration, Action onComplete = null)
-        {
-            float currentTime = 0;
-            float startingVolume = audioSource.volume;
 
-            while (currentTime < duration)
+        /// <summary>
+        /// Asynchronously fades an AudioSource's volume out
+        /// </summary>
+        public static async Task FadeOutAsync(this AudioSource audioSource,
+            float duration,
+            bool useUnscaledTime = true,
+            Action onComplete = null)
+        {
+            if (audioSource == null) return;
+
+            float startVolume = audioSource.volume;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
             {
-                currentTime += Time.unscaledDeltaTime;
-                audioSource.volume = Mathf.Lerp(startingVolume, 0, currentTime / duration);
+                elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+                audioSource.volume = Mathf.Lerp(startVolume, MinVolume, elapsed / duration);
                 await Task.Yield();
             }
 
-            audioSource.volume = 0;
+            audioSource.volume = MinVolume;
             onComplete?.Invoke();
         }
-        
 #endif
-        
     }
 }

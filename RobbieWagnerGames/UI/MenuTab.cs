@@ -5,26 +5,32 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using RobbieWagnerGames.Managers;
 
 namespace RobbieWagnerGames.UI
 {
     public class MenuTab : MonoBehaviour
     {
         [Header("General")]
-        [SerializeField] public string tabName;
-        [SerializeField] public LayoutGroup tabContentParent;
+        public string tabName;
+        public LayoutGroup tabContentParent;
 
-        [SerializeField] public TextMeshProUGUI contentTextPrefab;
+        public TextMeshProUGUI contentTextPrefab;
+        public GameObject defaultSelection;
 
         public virtual void BuildTab()
         {
 
         }
 
-        public virtual void ToggleTab(bool on)
+        public virtual void OnOpenTab()
         {
-            foreach(Transform child in transform)
-                transform.gameObject.SetActive(on);
+            EventSystemManager.Instance.eventSystem.SetSelectedGameObject(defaultSelection);
+        }
+
+        public virtual void OnCloseTab() 
+        {
+
         }
 
         protected string AddSpacesToString(string text, bool preserveAcronyms)

@@ -1,47 +1,42 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace RobbieWagnerGames.ProcGen
 {
     public enum CellType
     {
-        BLANK,
-        ROAD
+        Blank,
+        Road
     }
 
+    [System.Serializable]
     public class ProcGenCell
     {
-        public int value = -1;
-        public int x;
-        public int y;
-        public List<int> options;
-
-        public ProcGenCell()
-        {
-
-        }
+        public int Value { get; set; } = -1;
+        public int X { get; private set; }
+        public int Y { get; private set; }
+        public List<int> Options { get; set; }
 
         public ProcGenCell(int x, int y)
         {
-            this.x = x;
-            this.y = y;
+            X = x;
+            Y = y;
+            Options = new List<int>();
         }
 
         public override string ToString()
         {
-            string returnValue = "";
-            string optionsList = "{";
-            foreach (int i in options)
+            var stringBuilder = new StringBuilder();
+            stringBuilder.Append($"({X},{Y}):");
+            
+            stringBuilder.Append("{");
+            foreach (int option in Options)
             {
-                optionsList += i.ToString() + ",";
+                stringBuilder.Append(option.ToString() + ",");
             }
-            optionsList += "}";
-            returnValue = $"({x},{y}):{optionsList}";
+            stringBuilder.Append("}");
 
-            return returnValue;
+            return stringBuilder.ToString();
         }
     }
 }

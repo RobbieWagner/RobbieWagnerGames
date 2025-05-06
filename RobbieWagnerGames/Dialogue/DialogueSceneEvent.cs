@@ -1,27 +1,51 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Ink.Runtime;
-using RobbieWagnerGames;
 
-namespace RobbieWagnerGames
+namespace RobbieWagnerGames.Dialogue
 {
+    /// <summary>
+    /// A scene event that plays a dialogue sequence
+    /// </summary>
     public class DialogueSceneEvent : SceneEvent
     {
-        [SerializeField] private TextAsset storyTextAsset;
-        [SerializeField] private bool useSimpleDialogueManager;
+        [Header("Dialogue Settings")]
+        [SerializeField] private TextAsset inkStoryAsset;
+        [SerializeField] private bool useSimpleDialogueManager = false;
+        [SerializeField] private bool waitForCompletion = true;
 
         public override IEnumerator RunSceneEvent()
         {
-            Story story = new Story(storyTextAsset.text);
-            
-            if(useSimpleDialogueManager)
-                yield return SimpleDialogueManager.Instance?.EnterDialogueModeCo(story);
-            else
-                yield return DialogueManager.Instance.EnterDialogueModeCo(story);
+            if (inkStoryAsset == null)
+            {
+                Debug.LogWarning("No Ink story asset assigned", this);
+                yield break;
+            }
 
-            yield return StartCoroutine(base.RunSceneEvent());
-            StopCoroutine(RunSceneEvent());
+            Story story = DialogueConfigurer.CreateStory(inkStoryAsset);
+            
+            if (story == null)
+            {
+                yield break;
+            }
+
+            if (DialogueManager.Instance != null)
+            {
+                yield return StartCoroutine(DialogueManager.Instance.StartDialogueCo(story));
+            }
+            else
+            {
+                Debug.LogError("No available dialogue manager found");
+            }
+
+            if (waitForCompletion)
+            {
+                yield return StartCoroutine(base.RunSceneEvent());
+            }
+            else
+            {
+                StartCoroutine(base.RunSceneEvent());
+            }
         }
     }
 }
